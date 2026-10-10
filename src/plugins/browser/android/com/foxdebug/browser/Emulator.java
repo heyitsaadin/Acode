@@ -306,6 +306,32 @@ public class Emulator extends LinearLayout {
     listener.onChange(width, height, maxScale / 100f);
   }
 
+  private void saveDefaultDevice(String name) {
+    context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .edit()
+      .putString("default_device", name)
+      .apply();
+  }
+
+  private void restoreDefaultDevice() {
+    String name = context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .getString("default_device", null);
+    if (name == null) return;
+
+    for (Device device : deviceListView.devices) {
+      if (device.id != customDevice.id && device.name.equals(name)) {
+        if (deviceListView.selectedDeviceView != null) {
+          deviceListView.selectedDeviceView.deselect();
+        }
+        deviceListView.select(device);
+        selectDevice(device);
+        return;
+      }
+    }
+  }
+
   private void setMaxScale(int width, int height) {
     SeekBar scaleSeekBar = seekBars.get("scale");
     SeekBar widthSeekBar = seekBars.get("width");
