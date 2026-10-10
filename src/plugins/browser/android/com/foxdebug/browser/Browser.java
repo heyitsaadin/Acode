@@ -338,6 +338,7 @@ public class Browser extends LinearLayout {
 
             emulator = true;
             menu.setChecked("Devices", true);
+            updateDefaultItems(true);
             setDesktopMode(true);
             setConsoleVisible(false);
             menu.setChecked("Console", false);
