@@ -251,7 +251,7 @@ public class Browser extends LinearLayout {
               }
 
               emulator = checked;
-              saveEmulatorPref(checked);
+              updateDefaultItems(checked);
               if (checked) {
                 setDesktopMode(true);
                 setConsoleVisible(false);
