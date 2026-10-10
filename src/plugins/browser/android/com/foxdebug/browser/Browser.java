@@ -310,12 +310,9 @@ public class Browser extends LinearLayout {
     );
   }
 
-  private void saveEmulatorPref(boolean enabled) {
-    context
-      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
-      .edit()
-      .putBoolean("emulator_default", enabled)
-      .apply();
+  private void updateDefaultItems(boolean emulatorOn) {
+    menu.setVisible("Set as Default", emulatorOn);
+    menu.setVisible("Clear Default", emulatorOn);
   }
 
   private void restoreEmulator() {
