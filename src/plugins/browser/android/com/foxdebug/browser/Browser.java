@@ -320,7 +320,7 @@ public class Browser extends LinearLayout {
 
     boolean enabled = context
       .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
-      .getBoolean("emulator_default", false);
+      .getBoolean("default_set", false);
     if (!enabled) return;
 
     webView
