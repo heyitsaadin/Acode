@@ -279,6 +279,8 @@ public class Emulator extends LinearLayout {
     int maxHeight = heightSeekBar.getMax();
     int maxScale;
 
+    saveDefaultDevice(device.name);
+
     int width = device.width;
     int height = device.height;
 
