@@ -310,6 +310,52 @@ public class Browser extends LinearLayout {
     );
   }
 
+  private void saveEmulatorPref(boolean enabled) {
+    context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .edit()
+      .putBoolean("emulator_default", enabled)
+      .apply();
+  }
+
+  private void restoreEmulator() {
+    if (onlyConsole) return;
+
+    boolean enabled = context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .getBoolean("emulator_default", false);
+    if (!enabled) return;
+
+    webView
+      .getViewTreeObserver()
+      .addOnGlobalLayoutListener(
+        new ViewTreeObserver.OnGlobalLayoutListener() {
+          @Override
+          public void onGlobalLayout() {
+            if (webView.getMeasuredWidth() == 0) return;
+            webView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+
+            if (deviceEmulator == null) {
+              createDeviceEmulatorLayout();
+            }
+
+            emulator = true;
+            menu.setChecked("Devices", true);
+            setDesktopMode(true);
+            setConsoleVisible(false);
+            menu.setChecked("Console", false);
+            menu.setVisible("Console", false);
+            addView(deviceEmulator);
+            fitWebViewTo(
+              deviceEmulator.getWidthProgress(),
+              deviceEmulator.getHeightProgress(),
+              deviceEmulator.getScaleProgress()
+            );
+          }
+        }
+      );
+  }
+
   private void createDeviceEmulatorLayout() {
     Browser browser = this;
     deviceEmulator = new Emulator(context, theme);
