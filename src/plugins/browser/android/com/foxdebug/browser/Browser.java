@@ -337,6 +337,51 @@ public class Browser extends LinearLayout {
     );
   }
 
+  /**
+   * Shows or hides a virtual cursor (arrow) inside the page. It follows the
+   * finger / pointer. Safe to call repeatedly; any previous cursor is removed
+   * first. Called when the menu toggle changes and after every page load,
+   * because navigating wipes the injected overlay.
+   */
+  public void applyCursor() {
+    String script =
+      "(function(on){" +
+      "if(window.__acodeCursorCleanup){window.__acodeCursorCleanup();window.__acodeCursorCleanup=null;}" +
+      "if(!on)return;" +
+      "var root=document.documentElement;if(!root)return;" +
+      "var c=document.createElement('div');" +
+      "c.style.cssText='position:fixed;left:0;top:0;width:20px;height:20px;" +
+      "pointer-events:none;z-index:2147483647;display:none;" +
+      "filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);" +
+      "will-change:transform;';" +
+      "var a=document.createElement('div');" +
+      "a.style.cssText='width:100%;height:100%;background:#fff;" +
+      "clip-path:polygon(0 0,0 100%,28% 76%,52% 100%,68% 91%,44% 67%,80% 67%);';" +
+      "c.appendChild(a);root.appendChild(c);" +
+      "function move(x,y){c.style.display='block';" +
+      "c.style.transform='translate('+x+'px,'+y+'px)';}" +
+      "function onTouch(e){var t=e.touches&&e.touches[0];if(t)move(t.clientX,t.clientY);}" +
+      "function onPtr(e){move(e.clientX,e.clientY);}" +
+      "var o={capture:true,passive:true};" +
+      "window.addEventListener('touchstart',onTouch,o);" +
+      "window.addEventListener('touchmove',onTouch,o);" +
+      "window.addEventListener('pointermove',onPtr,o);" +
+      "window.addEventListener('pointerdown',onPtr,o);" +
+      "window.addEventListener('mousemove',onPtr,o);" +
+      "window.__acodeCursorCleanup=function(){" +
+      "window.removeEventListener('touchstart',onTouch,o);" +
+      "window.removeEventListener('touchmove',onTouch,o);" +
+      "window.removeEventListener('pointermove',onPtr,o);" +
+      "window.removeEventListener('pointerdown',onPtr,o);" +
+      "window.removeEventListener('mousemove',onPtr,o);" +
+      "if(c.parentNode)c.parentNode.removeChild(c);};" +
+      "})(" +
+      (cursor ? "true" : "false") +
+      ");";
+
+    webView.evaluateJavascript(script, null);
+  }
+
   private void updateDefaultItems(boolean emulatorOn) {
     menu.setVisible("Set as Default", emulatorOn);
     menu.setVisible(
