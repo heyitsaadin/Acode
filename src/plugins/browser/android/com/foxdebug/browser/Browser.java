@@ -837,6 +837,11 @@ class BrowserWebViewClient extends WebViewClient {
     super.onPageFinished(view, url);
     browser.setProgressBarVisible(false);
 
+    // Navigation wipes injected overlays, so re-apply the cursor if enabled.
+    if (browser.cursor) {
+      browser.applyCursor();
+    }
+
     // Inject console for external sites
     // this is not a good solution but for now its good, later we'll improve this
     if (!url.startsWith("http://localhost")) {
