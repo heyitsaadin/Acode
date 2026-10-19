@@ -294,6 +294,10 @@ public class Browser extends LinearLayout {
             case "Console":
               setConsoleVisible(checked);
               break;
+            case "Cursor":
+              cursor = checked;
+              applyCursor();
+              break;
             case "Set as Default":
               if (deviceEmulator != null) {
                 deviceEmulator.saveAsDefault();
