@@ -349,37 +349,77 @@ public class Browser extends LinearLayout {
    * because navigating wipes the injected overlay.
    */
   public void applyCursor() {
+    // Cursor mode ("offset pointer"):
+    //  - The page's own touch/pointer/mouse input is blocked completely
+    //    (no scrolling, zooming or tapping on the page itself).
+    //  - Dragging a finger anywhere moves the cursor, which is drawn OFFSET px
+    //    above the finger so it is never hidden under it.
+    //  - The cursor stays where it was left when the finger lifts.
+    //  - A quick tap anywhere clicks at the cursor's current position.
     String script =
       "(function(on){" +
       "if(window.__acodeCursorCleanup){window.__acodeCursorCleanup();window.__acodeCursorCleanup=null;}" +
       "if(!on)return;" +
       "var root=document.documentElement;if(!root)return;" +
+      "var OFFSET=110;" +
+      // stop the page from panning / pinch-zooming / selecting text
+      "var st=document.createElement('style');" +
+      "st.textContent='html,body{touch-action:none!important;" +
+      "-webkit-user-select:none!important;user-select:none!important;}';" +
+      "(document.head||root).appendChild(st);" +
+      // the cursor arrow
       "var c=document.createElement('div');" +
       "c.style.cssText='position:fixed;left:0;top:0;width:20px;height:20px;" +
-      "pointer-events:none;z-index:2147483647;display:none;" +
+      "pointer-events:none;z-index:2147483647;" +
       "filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);" +
       "will-change:transform;';" +
       "var a=document.createElement('div');" +
       "a.style.cssText='width:100%;height:100%;background:#fff;" +
       "clip-path:polygon(0 0,0 100%,28% 76%,52% 100%,68% 91%,44% 67%,80% 67%);';" +
       "c.appendChild(a);root.appendChild(c);" +
-      "function move(x,y){c.style.display='block';" +
-      "c.style.transform='translate('+x+'px,'+y+'px)';}" +
-      "function onTouch(e){var t=e.touches&&e.touches[0];if(t)move(t.clientX,t.clientY);}" +
-      "function onPtr(e){move(e.clientX,e.clientY);}" +
-      "var o={capture:true,passive:true};" +
-      "window.addEventListener('touchstart',onTouch,o);" +
-      "window.addEventListener('touchmove',onTouch,o);" +
-      "window.addEventListener('pointermove',onPtr,o);" +
-      "window.addEventListener('pointerdown',onPtr,o);" +
-      "window.addEventListener('mousemove',onPtr,o);" +
+      "var cx=window.innerWidth/2,cy=window.innerHeight/2;" +
+      "var t0=0,sx=0,sy=0,moved=false,active=false;" +
+      "function draw(){c.style.transform='translate('+cx+'px,'+cy+'px)';}" +
+      "draw();" +
+      // finger position -> cursor position (offset shrinks near the bottom
+      // edge so the whole screen stays reachable)
+      "function place(x,y){var h=window.innerHeight;" +
+      "var off=Math.min(OFFSET,Math.max(0,h-y));" +
+      "cx=Math.max(0,Math.min(window.innerWidth-1,x));" +
+      "cy=Math.max(0,Math.min(h-1,y-off));draw();}" +
+      // synthetic click at the cursor
+      "function clickAtCursor(){" +
+      "var el=document.elementFromPoint(cx,cy);if(!el)return;" +
+      "var mo={bubbles:true,cancelable:true,view:window,clientX:cx,clientY:cy,button:0};" +
+      "var po={bubbles:true,cancelable:true,view:window,clientX:cx,clientY:cy,button:0," +
+      "pointerType:'mouse',isPrimary:true};" +
+      "['pointerdown','mousedown','pointerup','mouseup','click'].forEach(function(n){" +
+      "var isP=n.indexOf('pointer')===0&&window.PointerEvent;" +
+      "el.dispatchEvent(isP?new PointerEvent(n,po):new MouseEvent(n,mo));});" +
+      "if(el.focus){try{el.focus();}catch(err){}}}" +
+      "function onTS(e){var t=e.touches[0];if(!t)return;" +
+      "t0=Date.now();sx=t.clientX;sy=t.clientY;moved=false;active=true;}" +
+      "function onTM(e){var t=e.touches[0];if(!t)return;" +
+      "if(!moved&&Math.abs(t.clientX-sx)+Math.abs(t.clientY-sy)>10)moved=true;" +
+      "if(moved)place(t.clientX,t.clientY);}" +
+      "function onTE(e){if(active&&!moved&&e.touches.length===0&&Date.now()-t0<300)clickAtCursor();" +
+      "if(e.touches.length===0)active=false;}" +
+      // block every real (trusted) input event from reaching the page
+      "var types=['touchstart','touchmove','touchend','touchcancel','pointerdown','pointermove'," +
+      "'pointerup','pointercancel','mousedown','mousemove','mouseup','click','dblclick'," +
+      "'contextmenu','wheel'];" +
+      "var o={capture:true,passive:false};" +
+      "function block(e){if(!e.isTrusted)return;" +
+      "if(e.type==='touchstart')onTS(e);" +
+      "else if(e.type==='touchmove')onTM(e);" +
+      "else if(e.type==='touchend')onTE(e);" +
+      "if(e.cancelable)e.preventDefault();" +
+      "e.stopImmediatePropagation();}" +
+      "types.forEach(function(t){window.addEventListener(t,block,o);});" +
       "window.__acodeCursorCleanup=function(){" +
-      "window.removeEventListener('touchstart',onTouch,o);" +
-      "window.removeEventListener('touchmove',onTouch,o);" +
-      "window.removeEventListener('pointermove',onPtr,o);" +
-      "window.removeEventListener('pointerdown',onPtr,o);" +
-      "window.removeEventListener('mousemove',onPtr,o);" +
-      "if(c.parentNode)c.parentNode.removeChild(c);};" +
+      "types.forEach(function(t){window.removeEventListener(t,block,o);});" +
+      "if(c.parentNode)c.parentNode.removeChild(c);" +
+      "if(st.parentNode)st.parentNode.removeChild(st);};" +
       "})(" +
       (cursor ? "true" : "false") +
       ");";
