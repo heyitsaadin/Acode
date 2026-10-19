@@ -71,6 +71,9 @@ public class Browser extends LinearLayout {
   public boolean emulator = false;
   public boolean console = false;
   public boolean desktopMode = false;
+  // Virtual cursor overlay. Intentionally NOT persisted: it is off every
+  // time the browser is launched.
+  public boolean cursor = false;
 
   private String url = "";
   private String title = "Browser";
