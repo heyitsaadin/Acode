@@ -240,6 +240,7 @@ public class Browser extends LinearLayout {
     menu.addItem(Ui.Icons.DEVICES, "Devices", false);
     menu.addItem(Ui.Icons.NO_CACHE, "Disable Cache", false);
     menu.addItem(Ui.Icons.TERMINAL, "Console", false);
+    menu.addItem(Ui.Icons.DESKTOP, "Cursor", false);
     menu.addItem(Ui.Icons.TUNE, "Set as Default");
     menu.addItem(Ui.Icons.REFRESH, "Clear Default");
     menu.setVisible("Set as Default", false);
