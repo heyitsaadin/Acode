@@ -390,7 +390,7 @@ public class Browser extends LinearLayout {
     //  - The cursor stays where it was left when the finger lifts.
     //  - A quick tap anywhere clicks at the cursor's current position.
     String script =
-      "(function(on){" +
+      "(function(on,SPEED){" +
       "if(window.__acodeCursorCleanup){window.__acodeCursorCleanup();window.__acodeCursorCleanup=null;}" +
       "if(!on)return;" +
       "var root=document.documentElement;if(!root)return;" +
