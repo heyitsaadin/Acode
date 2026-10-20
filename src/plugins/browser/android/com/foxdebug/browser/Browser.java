@@ -74,6 +74,10 @@ public class Browser extends LinearLayout {
   // Virtual cursor overlay. Intentionally NOT persisted: it is off every
   // time the browser is launched.
   public boolean cursor = false;
+  // How far the cursor moves per unit of finger movement (trackpad speed).
+  // Tap "Cursor Speed" in the menu to cycle through CURSOR_SPEEDS.
+  public float cursorSpeed = 1.5f;
+  private static final float[] CURSOR_SPEEDS = { 0.5f, 1f, 1.5f, 2f, 3f, 4f };
 
   private String url = "";
   private String title = "Browser";
