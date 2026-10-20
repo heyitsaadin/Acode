@@ -749,6 +749,187 @@ public class Browser extends LinearLayout {
   }
 }
 
+/**
+ * JavaScript injected into the page while the "Cursor" menu toggle is on.
+ *
+ * Behaviour:
+ *  - A virtual mouse cursor (the Acode arrow) is drawn over the page. Its
+ *    shape follows the CSS `cursor` of whatever is under it (pointer hand,
+ *    text I-beam, grab, not-allowed, resize arrows, ...).
+ *  - Dragging a finger moves the cursor like a trackpad, multiplied by SPEED.
+ *  - A quick tap clicks at the cursor.
+ *  - Hover is emulated: mouseover/mouseenter/mousemove events are fired and
+ *    :hover rules from same-origin stylesheets are mirrored onto a helper
+ *    class, so hover effects and hover-dependent cursors work.
+ *  - Normal one-finger touch, scrolling and taps on the page are blocked, but
+ *    two-finger pinch zoom is still allowed.
+ */
+class CursorScript {
+
+  static String build(boolean on, float speed) {
+    String[] js = {
+      "(function(on,SPEED){",
+      "if(window.__acodeCursorCleanup){window.__acodeCursorCleanup();window.__acodeCursorCleanup=null;}",
+      "if(!on)return;",
+      "var root=document.documentElement;if(!root)return;",
+      "var NS='http://www.w3.org/2000/svg';",
+      "var HV='__acode_hv';",
+      "var cur='',hot=[0,0],hv=null,gesture=false;",
+      "var t0=0,sx=0,sy=0,lx=0,ly=0,moved=false,active=false;",
+      // visible area, so the cursor also behaves while pinch-zoomed
+      "function bounds(){var v=window.visualViewport;",
+      "if(v)return{x0:v.offsetLeft,y0:v.offsetTop,x1:v.offsetLeft+v.width,y1:v.offsetTop+v.height,s:v.scale||1};",
+      "return{x0:0,y0:0,x1:window.innerWidth,y1:window.innerHeight,s:1};}",
+      // copy every :hover rule to a helper class we can toggle ourselves
+      "function rulesToCss(rules){var out='';",
+      "for(var i=0;i<rules.length;i++){var r=rules[i];",
+      "try{",
+      "if(r.type===1){if(r.selectorText&&r.selectorText.indexOf(':hover')>-1){",
+      "out+=r.selectorText.replace(/:hover/g,'.'+HV)+'{'+r.style.cssText+'}';}}",
+      "else if(r.cssRules&&(r.type===4||r.type===12)){",
+      "var inner=rulesToCss(r.cssRules);",
+      "if(inner){out+=(r.type===4?'@media '+r.media.mediaText:'@supports '+r.conditionText)+'{'+inner+'}';}}",
+      "}catch(err){}}",
+      "return out;}",
+      "function hoverCss(){var css='';",
+      "for(var i=0;i<document.styleSheets.length;i++){",
+      "try{css+=rulesToCss(document.styleSheets[i].cssRules);}catch(err){}}",
+      "return css;}",
+      // block panning / text selection but keep pinch zoom
+      "var st=document.createElement('style');",
+      "st.textContent='html,body,*{touch-action:pinch-zoom!important;-webkit-user-select:none!important;user-select:none!important;}'+hoverCss();",
+      "(document.head||root).appendChild(st);",
+      "var c=document.createElement('div');",
+      "c.style.cssText='position:fixed;left:0;top:0;width:24px;height:24px;pointer-events:none;z-index:2147483647;transform-origin:0 0;will-change:transform;';",
+      "root.appendChild(c);",
+      // cursor shapes: [tag, attrs, filled, strokeWidth, text]; drawn black with a white outline
+      "var EW=[['rect',{x:5,y:11,width:14,height:2},1],['path',{d:'M1.5 12L7 7.5V16.5Z'},1],['path',{d:'M22.5 12L17 7.5V16.5Z'},1]];",
+      "var SHAPES={",
+      "arrow:{hx:0,hy:0,o:48,g:'scale(0.0505) translate(-88 -50)',items:[['path',{d:'M88 50L445 385L240 395L88 525Z'},1,30]]},",
+      "hand:{hx:9.7,hy:2,o:2.4,items:[['rect',{x:8,y:2,width:3.4,height:12,rx:1.7},1],['rect',{x:11.4,y:8,width:3,height:9,rx:1.5},1],['rect',{x:14.4,y:9,width:3,height:8,rx:1.5},1],['rect',{x:17.4,y:10,width:2.8,height:7,rx:1.4},1],['rect',{x:5.5,y:12,width:14.7,height:9.5,rx:4.5},1],['rect',{x:3.2,y:12.5,width:6,height:3.4,rx:1.7,transform:'rotate(35 5 14)'},1]]},",
+      "text:{hx:12,hy:12,o:2.4,items:[['rect',{x:11,y:3,width:2,height:18},1],['rect',{x:8,y:3,width:8,height:2},1],['rect',{x:8,y:19,width:8,height:2},1]]},",
+      "cross:{hx:12,hy:12,o:2.4,items:[['rect',{x:11,y:2,width:2,height:20},1],['rect',{x:2,y:11,width:20,height:2},1]]},",
+      "wait:{hx:12,hy:12,o:2.4,items:[['circle',{cx:12,cy:12,r:7,'stroke-dasharray':'28 16'},0,3]]},",
+      "no:{hx:12,hy:12,o:2.4,items:[['circle',{cx:12,cy:12,r:8},0,3],['line',{x1:6.3,y1:6.3,x2:17.7,y2:17.7},0,3]]},",
+      "move:{hx:12,hy:12,o:2.4,items:[['rect',{x:11,y:4,width:2,height:16},1],['rect',{x:4,y:11,width:16,height:2},1],['path',{d:'M12 1L16 6H8Z'},1],['path',{d:'M12 23L16 18H8Z'},1],['path',{d:'M1 12L6 8V16Z'},1],['path',{d:'M23 12L18 8V16Z'},1]]},",
+      "ew:{hx:12,hy:12,o:2.4,items:EW},",
+      "ns:{hx:12,hy:12,o:2.4,g:'rotate(90 12 12)',items:EW},",
+      "nesw:{hx:12,hy:12,o:2.4,g:'rotate(-45 12 12)',items:EW},",
+      "nwse:{hx:12,hy:12,o:2.4,g:'rotate(45 12 12)',items:EW},",
+      "grab:{hx:12,hy:12,o:2.4,items:[['rect',{x:5,y:10,width:14,height:10,rx:4},1],['rect',{x:5.8,y:5,width:3,height:8,rx:1.5},1],['rect',{x:9.1,y:4,width:3,height:9,rx:1.5},1],['rect',{x:12.4,y:4,width:3,height:9,rx:1.5},1],['rect',{x:15.7,y:5,width:3,height:8,rx:1.5},1]]},",
+      "grabbing:{hx:12,hy:12,o:2.4,items:[['rect',{x:5,y:10,width:14,height:10,rx:4},1],['rect',{x:5.8,y:8,width:3,height:5,rx:1.5},1],['rect',{x:9.1,y:7,width:3,height:6,rx:1.5},1],['rect',{x:12.4,y:7,width:3,height:6,rx:1.5},1],['rect',{x:15.7,y:8,width:3,height:5,rx:1.5},1]]},",
+      "help:{hx:12,hy:12,o:2.4,items:[['text',{x:12,y:20,'font-size':22,'font-weight':'700','text-anchor':'middle','font-family':'Arial,sans-serif'},1,0,'?']]}",
+      "};",
+      // CSS cursor value -> shape
+      "var MAP={pointer:'hand',grab:'grab',grabbing:'grabbing',text:'text','vertical-text':'text',crosshair:'cross',cell:'cross',wait:'wait',progress:'wait','not-allowed':'no','no-drop':'no',move:'move','all-scroll':'move',help:'help','ew-resize':'ew','col-resize':'ew','e-resize':'ew','w-resize':'ew','ns-resize':'ns','row-resize':'ns','n-resize':'ns','s-resize':'ns','nesw-resize':'nesw','ne-resize':'nesw','sw-resize':'nesw','nwse-resize':'nwse','nw-resize':'nwse','se-resize':'nwse'};",
+      "function mk(tag,attrs){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);return e;}",
+      "function build(shape){",
+      "var svg=mk('svg',{width:24,height:24,viewBox:'0 0 24 24'});",
+      "svg.style.cssText='position:absolute;left:0;top:0;overflow:visible;';",
+      "var g=mk('g',shape.g?{transform:shape.g}:{});svg.appendChild(g);",
+      "for(var pass=0;pass<2;pass++){",
+      "for(var i=0;i<shape.items.length;i++){",
+      "var it=shape.items[i];var e=mk(it[0],it[1]);var sw=it[3]||0;",
+      "var col=pass===0?'#fff':'#000';",
+      "e.setAttribute('fill',it[2]?col:'none');",
+      "if(pass===0){e.setAttribute('stroke','#fff');e.setAttribute('stroke-width',sw+shape.o);}",
+      "else if(sw){e.setAttribute('stroke','#000');e.setAttribute('stroke-width',sw);}",
+      "e.setAttribute('stroke-linejoin','round');e.setAttribute('stroke-linecap','round');",
+      "if(it[4])e.textContent=it[4];",
+      "g.appendChild(e);}}",
+      "return svg;}",
+      // position
+      "var pos=window.__acodeCursorPos;var b0=bounds();",
+      "var cx=pos?pos[0]:(b0.x0+b0.x1)/2,cy=pos?pos[1]:(b0.y0+b0.y1)/2;",
+      "function draw(){var b=bounds();window.__acodeCursorPos=[cx,cy];",
+      "c.style.transform='translate('+(cx-hot[0]/b.s)+'px,'+(cy-hot[1]/b.s)+'px) scale('+(1/b.s)+')';}",
+      "function nudge(dx,dy){var b=bounds();",
+      "cx=Math.max(b.x0,Math.min(b.x1-1,cx+dx));",
+      "cy=Math.max(b.y0,Math.min(b.y1-1,cy+dy));draw();}",
+      "function setShape(k){if(k===cur)return;cur=k;",
+      "while(c.firstChild)c.removeChild(c.firstChild);",
+      "if(k==='none'){c.style.visibility='hidden';return;}",
+      "c.style.visibility='visible';",
+      "var s=SHAPES[k]||SHAPES.arrow;hot=[s.hx,s.hy];c.appendChild(build(s));draw();}",
+      // which shape does the page want here?
+      "function isText(el){var n=el.nodeName;if(n==='TEXTAREA')return true;",
+      "if(n==='INPUT'){var t=(el.type||'text').toLowerCase();",
+      "return ['button','submit','reset','checkbox','radio','range','color','file','image'].indexOf(t)<0;}",
+      "return !!el.isContentEditable;}",
+      "function kindOf(el){if(!el)return 'arrow';var v='auto';",
+      "try{v=getComputedStyle(el).cursor||'auto';}catch(err){}",
+      "var m=v.match(/([a-z-]+)\\s*$/);v=m?m[1]:'auto';",
+      "if(v==='none')return 'none';",
+      "if(v==='auto')return isText(el)?'text':'arrow';",
+      "return MAP[v]||'arrow';}",
+      // synthetic mouse events
+      "function fire(el,type,bub){",
+      "var o={bubbles:!!bub,cancelable:true,view:window,clientX:cx,clientY:cy,button:0,",
+      "buttons:(type==='mousedown'||type==='pointerdown')?1:0};",
+      "try{if(type.indexOf('pointer')===0&&window.PointerEvent){o.pointerType='mouse';o.isPrimary=true;el.dispatchEvent(new PointerEvent(type,o));}",
+      "else el.dispatchEvent(new MouseEvent(type,o));}catch(err){}}",
+      "function hover(moved){var el=document.elementFromPoint(cx,cy);",
+      "if(el!==hv){",
+      "if(hv){fire(hv,'pointerout',1);fire(hv,'mouseout',1);fire(hv,'pointerleave',0);fire(hv,'mouseleave',0);}",
+      "for(var n=hv;n;n=n.parentElement)if(n.classList)n.classList.remove(HV);",
+      "for(var m=el;m;m=m.parentElement)if(m.classList)m.classList.add(HV);",
+      "hv=el;",
+      "if(el){fire(el,'pointerover',1);fire(el,'mouseover',1);fire(el,'pointerenter',0);fire(el,'mouseenter',0);}}",
+      "if(moved&&el){fire(el,'pointermove',1);fire(el,'mousemove',1);}",
+      "setShape(kindOf(el));}",
+      "function clickAtCursor(){hover(false);var el=hv;if(!el)return;",
+      "['pointerdown','mousedown','pointerup','mouseup','click'].forEach(function(n){fire(el,n,1);});",
+      "if(el.focus){try{el.focus();}catch(err){}}}",
+      // touch handling: one finger drives the cursor, two fingers are left to the browser (pinch zoom)
+      "function onTS(e){if(e.touches.length>1){gesture=true;return;}",
+      "var t=e.touches[0];if(!t)return;",
+      "gesture=false;active=true;moved=false;t0=Date.now();sx=lx=t.clientX;sy=ly=t.clientY;}",
+      "function onTM(e){if(gesture||e.touches.length>1){gesture=true;return;}",
+      "var t=e.touches[0];if(!t)return;",
+      "if(!moved&&Math.abs(t.clientX-sx)+Math.abs(t.clientY-sy)>10){moved=true;lx=sx;ly=sy;}",
+      "if(moved){nudge((t.clientX-lx)*SPEED,(t.clientY-ly)*SPEED);hover(true);}",
+      "lx=t.clientX;ly=t.clientY;}",
+      "function onTE(e){if(e.touches.length>0)return;",
+      "if(active&&!moved&&!gesture&&Date.now()-t0<300)clickAtCursor();",
+      "active=false;gesture=false;}",
+      // keep every real (trusted) input event away from the page's own handlers
+      "var types=['touchstart','touchmove','touchend','touchcancel','pointerdown','pointermove',",
+      "'pointerup','pointercancel','mousedown','mousemove','mouseup','click','dblclick',",
+      "'contextmenu','wheel'];",
+      "var o={capture:true,passive:false};",
+      "function block(e){if(!e.isTrusted)return;var ty=e.type;",
+      "if(ty==='touchstart')onTS(e);",
+      "else if(ty==='touchmove')onTM(e);",
+      "else if(ty==='touchend')onTE(e);",
+      "else if(ty==='touchcancel'){active=false;gesture=false;}",
+      "if(ty.indexOf('touch')!==0&&e.cancelable)e.preventDefault();",
+      "e.stopImmediatePropagation();}",
+      "types.forEach(function(t){window.addEventListener(t,block,o);});",
+      "var vv=window.visualViewport;",
+      "function vp(){nudge(0,0);}",
+      "if(vv){vv.addEventListener('resize',vp);vv.addEventListener('scroll',vp);}",
+      // layout can change under a resting cursor (after a click, animations)
+      "var iv=setInterval(function(){hover(false);},250);",
+      "window.__acodeCursorCleanup=function(){",
+      "clearInterval(iv);",
+      "types.forEach(function(t){window.removeEventListener(t,block,o);});",
+      "if(vv){vv.removeEventListener('resize',vp);vv.removeEventListener('scroll',vp);}",
+      "for(var n=hv;n;n=n.parentElement)if(n.classList)n.classList.remove(HV);",
+      "if(c.parentNode)c.parentNode.removeChild(c);",
+      "if(st.parentNode)st.parentNode.removeChild(st);};",
+      "setShape('arrow');hover(false);",
+      "})",
+    };
+
+    StringBuilder sb = new StringBuilder();
+    for (String line : js) {
+      sb.append(line).append('\n');
+    }
+    sb.append('(').append(on).append(',').append(speed).append(");");
+    return sb.toString();
+  }
+}
+
 class BrowserChromeClient extends WebChromeClient {
 
   Browser browser;
