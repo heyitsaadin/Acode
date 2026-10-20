@@ -382,11 +382,11 @@ public class Browser extends LinearLayout {
    * after every page load, because navigating wipes the injected overlay.
    */
   public void applyCursor() {
-    // Cursor mode ("offset pointer"):
+    // Cursor mode (trackpad style):
     //  - The page's own touch/pointer/mouse input is blocked completely
     //    (no scrolling, zooming or tapping on the page itself).
-    //  - Dragging a finger anywhere moves the cursor, which is drawn OFFSET px
-    //    above the finger so it is never hidden under it.
+    //  - Dragging a finger anywhere moves the cursor RELATIVELY, multiplied by
+    //    SPEED, so the cursor is never tied to (or hidden under) the finger.
     //  - The cursor stays where it was left when the finger lifts.
     //  - A quick tap anywhere clicks at the cursor's current position.
     String script =
