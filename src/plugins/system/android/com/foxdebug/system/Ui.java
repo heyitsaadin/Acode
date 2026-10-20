@@ -33,6 +33,10 @@ public class Ui {
     public static final String LAPTOP = "\uE90D";
     public static final String TV = "\uE929";
 
+    // Not a glyph in icon.ttf: this code is intercepted in get() and the
+    // cursor arrow is drawn directly with a Canvas instead.
+    public static final String CURSOR = "\uF8FF";
+
     private static Paint paint;
     private static int size = 24;
     private static int color = Color.parseColor("#FFFFFF");
