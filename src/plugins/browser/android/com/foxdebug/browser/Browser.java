@@ -431,10 +431,12 @@ public class Browser extends LinearLayout {
       "el.dispatchEvent(isP?new PointerEvent(n,po):new MouseEvent(n,mo));});" +
       "if(el.focus){try{el.focus();}catch(err){}}}" +
       "function onTS(e){var t=e.touches[0];if(!t)return;" +
-      "t0=Date.now();sx=t.clientX;sy=t.clientY;moved=false;active=true;}" +
+      "t0=Date.now();sx=lx=t.clientX;sy=ly=t.clientY;moved=false;active=true;}" +
       "function onTM(e){var t=e.touches[0];if(!t)return;" +
-      "if(!moved&&Math.abs(t.clientX-sx)+Math.abs(t.clientY-sy)>10)moved=true;" +
-      "if(moved)place(t.clientX,t.clientY);}" +
+      // small wobble during a tap must not move the cursor
+      "if(!moved&&Math.abs(t.clientX-sx)+Math.abs(t.clientY-sy)>10){moved=true;lx=sx;ly=sy;}" +
+      "if(moved)nudge((t.clientX-lx)*SPEED,(t.clientY-ly)*SPEED);" +
+      "lx=t.clientX;ly=t.clientY;}" +
       "function onTE(e){if(active&&!moved&&e.touches.length===0&&Date.now()-t0<300)clickAtCursor();" +
       "if(e.touches.length===0)active=false;}" +
       // block every real (trusted) input event from reaching the page
