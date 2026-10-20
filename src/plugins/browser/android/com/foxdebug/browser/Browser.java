@@ -457,6 +457,8 @@ public class Browser extends LinearLayout {
       "if(st.parentNode)st.parentNode.removeChild(st);};" +
       "})(" +
       (cursor ? "true" : "false") +
+      "," +
+      cursorSpeed +
       ");";
 
     webView.evaluateJavascript(script, null);
