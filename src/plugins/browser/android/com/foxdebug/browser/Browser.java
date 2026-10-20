@@ -353,11 +353,33 @@ public class Browser extends LinearLayout {
     );
   }
 
+  private String cursorSpeedLabel() {
+    return "Cursor Speed: " + cursorSpeed + "x";
+  }
+
+  /** Moves to the next speed in CURSOR_SPEEDS (wrapping) and applies it. */
+  private void cycleCursorSpeed() {
+    int index = 0;
+    for (int i = 0; i < CURSOR_SPEEDS.length; i++) {
+      if (CURSOR_SPEEDS[i] == cursorSpeed) {
+        index = i;
+        break;
+      }
+    }
+
+    cursorSpeed = CURSOR_SPEEDS[(index + 1) % CURSOR_SPEEDS.length];
+    menu.setLabel("Cursor Speed", cursorSpeedLabel());
+    Toast
+      .makeText(context, "Cursor speed: " + cursorSpeed + "x", Toast.LENGTH_SHORT)
+      .show();
+    applyCursor();
+  }
+
   /**
-   * Shows or hides a virtual cursor (arrow) inside the page. It follows the
-   * finger / pointer. Safe to call repeatedly; any previous cursor is removed
-   * first. Called when the menu toggle changes and after every page load,
-   * because navigating wipes the injected overlay.
+   * Shows or hides a virtual cursor (arrow) inside the page, driven like a
+   * trackpad. Safe to call repeatedly; any previous cursor is removed first
+   * (its position is kept). Called when the menu toggle or speed changes and
+   * after every page load, because navigating wipes the injected overlay.
    */
   public void applyCursor() {
     // Cursor mode ("offset pointer"):
