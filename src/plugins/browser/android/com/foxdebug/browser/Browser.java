@@ -409,16 +409,17 @@ public class Browser extends LinearLayout {
       "a.style.cssText='width:100%;height:100%;background:#fff;" +
       "clip-path:polygon(0 0,0 100%,28% 76%,52% 100%,68% 91%,44% 67%,80% 67%);';" +
       "c.appendChild(a);root.appendChild(c);" +
-      "var cx=window.innerWidth/2,cy=window.innerHeight/2;" +
-      "var t0=0,sx=0,sy=0,moved=false,active=false;" +
-      "function draw(){c.style.transform='translate('+cx+'px,'+cy+'px)';}" +
+      // keep the cursor where it was when only the speed changed
+      "var pos=window.__acodeCursorPos;" +
+      "var cx=pos?pos[0]:window.innerWidth/2,cy=pos?pos[1]:window.innerHeight/2;" +
+      "var t0=0,sx=0,sy=0,lx=0,ly=0,moved=false,active=false;" +
+      "function draw(){window.__acodeCursorPos=[cx,cy];" +
+      "c.style.transform='translate('+cx+'px,'+cy+'px)';}" +
       "draw();" +
-      // finger position -> cursor position (offset shrinks near the bottom
-      // edge so the whole screen stays reachable)
-      "function place(x,y){var h=window.innerHeight;" +
-      "var off=Math.min(OFFSET,Math.max(0,h-y));" +
-      "cx=Math.max(0,Math.min(window.innerWidth-1,x));" +
-      "cy=Math.max(0,Math.min(h-1,y-off));draw();}" +
+      // move the cursor by (dx,dy), kept inside the viewport
+      "function nudge(dx,dy){" +
+      "cx=Math.max(0,Math.min(window.innerWidth-1,cx+dx));" +
+      "cy=Math.max(0,Math.min(window.innerHeight-1,cy+dy));draw();}" +
       // synthetic click at the cursor
       "function clickAtCursor(){" +
       "var el=document.elementFromPoint(cx,cy);if(!el)return;" +
