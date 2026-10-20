@@ -225,6 +225,14 @@ class MenuItem extends LinearLayout {
     addView(textView, 1);
   }
 
+  public void setLabel(String text) {
+    // Children are laid out as [icon, label, ...], see Menu.addItem().
+    View label = getChildAt(1);
+    if (label instanceof TextView) {
+      ((TextView) label).setText(text);
+    }
+  }
+
   public void setChecked(boolean checked) {
     this.checked = checked;
     if (checkBox != null) {
