@@ -382,86 +382,8 @@ public class Browser extends LinearLayout {
    * after every page load, because navigating wipes the injected overlay.
    */
   public void applyCursor() {
-    // Cursor mode (trackpad style):
-    //  - The page's own touch/pointer/mouse input is blocked completely
-    //    (no scrolling, zooming or tapping on the page itself).
-    //  - Dragging a finger anywhere moves the cursor RELATIVELY, multiplied by
-    //    SPEED, so the cursor is never tied to (or hidden under) the finger.
-    //  - The cursor stays where it was left when the finger lifts.
-    //  - A quick tap anywhere clicks at the cursor's current position.
-    String script =
-      "(function(on,SPEED){" +
-      "if(window.__acodeCursorCleanup){window.__acodeCursorCleanup();window.__acodeCursorCleanup=null;}" +
-      "if(!on)return;" +
-      "var root=document.documentElement;if(!root)return;" +
-      // stop the page from panning / pinch-zooming / selecting text
-      "var st=document.createElement('style');" +
-      "st.textContent='html,body{touch-action:none!important;" +
-      "-webkit-user-select:none!important;user-select:none!important;}';" +
-      "(document.head||root).appendChild(st);" +
-      // the cursor arrow
-      "var c=document.createElement('div');" +
-      "c.style.cssText='position:fixed;left:0;top:0;width:20px;height:20px;" +
-      "pointer-events:none;z-index:2147483647;" +
-      "filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);" +
-      "will-change:transform;';" +
-      "var a=document.createElement('div');" +
-      "a.style.cssText='width:100%;height:100%;background:#fff;" +
-      "clip-path:polygon(0 0,0 100%,28% 76%,52% 100%,68% 91%,44% 67%,80% 67%);';" +
-      "c.appendChild(a);root.appendChild(c);" +
-      // keep the cursor where it was when only the speed changed
-      "var pos=window.__acodeCursorPos;" +
-      "var cx=pos?pos[0]:window.innerWidth/2,cy=pos?pos[1]:window.innerHeight/2;" +
-      "var t0=0,sx=0,sy=0,lx=0,ly=0,moved=false,active=false;" +
-      "function draw(){window.__acodeCursorPos=[cx,cy];" +
-      "c.style.transform='translate('+cx+'px,'+cy+'px)';}" +
-      "draw();" +
-      // move the cursor by (dx,dy), kept inside the viewport
-      "function nudge(dx,dy){" +
-      "cx=Math.max(0,Math.min(window.innerWidth-1,cx+dx));" +
-      "cy=Math.max(0,Math.min(window.innerHeight-1,cy+dy));draw();}" +
-      // synthetic click at the cursor
-      "function clickAtCursor(){" +
-      "var el=document.elementFromPoint(cx,cy);if(!el)return;" +
-      "var mo={bubbles:true,cancelable:true,view:window,clientX:cx,clientY:cy,button:0};" +
-      "var po={bubbles:true,cancelable:true,view:window,clientX:cx,clientY:cy,button:0," +
-      "pointerType:'mouse',isPrimary:true};" +
-      "['pointerdown','mousedown','pointerup','mouseup','click'].forEach(function(n){" +
-      "var isP=n.indexOf('pointer')===0&&window.PointerEvent;" +
-      "el.dispatchEvent(isP?new PointerEvent(n,po):new MouseEvent(n,mo));});" +
-      "if(el.focus){try{el.focus();}catch(err){}}}" +
-      "function onTS(e){var t=e.touches[0];if(!t)return;" +
-      "t0=Date.now();sx=lx=t.clientX;sy=ly=t.clientY;moved=false;active=true;}" +
-      "function onTM(e){var t=e.touches[0];if(!t)return;" +
-      // small wobble during a tap must not move the cursor
-      "if(!moved&&Math.abs(t.clientX-sx)+Math.abs(t.clientY-sy)>10){moved=true;lx=sx;ly=sy;}" +
-      "if(moved)nudge((t.clientX-lx)*SPEED,(t.clientY-ly)*SPEED);" +
-      "lx=t.clientX;ly=t.clientY;}" +
-      "function onTE(e){if(active&&!moved&&e.touches.length===0&&Date.now()-t0<300)clickAtCursor();" +
-      "if(e.touches.length===0)active=false;}" +
-      // block every real (trusted) input event from reaching the page
-      "var types=['touchstart','touchmove','touchend','touchcancel','pointerdown','pointermove'," +
-      "'pointerup','pointercancel','mousedown','mousemove','mouseup','click','dblclick'," +
-      "'contextmenu','wheel'];" +
-      "var o={capture:true,passive:false};" +
-      "function block(e){if(!e.isTrusted)return;" +
-      "if(e.type==='touchstart')onTS(e);" +
-      "else if(e.type==='touchmove')onTM(e);" +
-      "else if(e.type==='touchend')onTE(e);" +
-      "if(e.cancelable)e.preventDefault();" +
-      "e.stopImmediatePropagation();}" +
-      "types.forEach(function(t){window.addEventListener(t,block,o);});" +
-      "window.__acodeCursorCleanup=function(){" +
-      "types.forEach(function(t){window.removeEventListener(t,block,o);});" +
-      "if(c.parentNode)c.parentNode.removeChild(c);" +
-      "if(st.parentNode)st.parentNode.removeChild(st);};" +
-      "})(" +
-      (cursor ? "true" : "false") +
-      "," +
-      cursorSpeed +
-      ");";
-
-    webView.evaluateJavascript(script, null);
+    // The injected script lives in CursorScript (bottom of this file).
+    webView.evaluateJavascript(CursorScript.build(cursor, cursorSpeed), null);
   }
 
   private void updateDefaultItems(boolean emulatorOn) {
