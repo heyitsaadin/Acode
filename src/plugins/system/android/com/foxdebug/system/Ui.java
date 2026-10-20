@@ -78,6 +78,32 @@ public class Ui {
       return bitmap;
     }
 
+    /** Draws the cursor arrow (same shape as the in-page cursor). */
+    private static Bitmap drawCursor(int color) {
+      int px = 96;
+      // The arrow outline is 357 x 475 units; fit it into the bitmap.
+      float s = (px * 0.9f) / 475f;
+      float ox = (px - 357f * s) / 2f;
+      float oy = (px - 475f * s) / 2f;
+
+      Bitmap bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+      Canvas canvas = new Canvas(bitmap);
+      Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+      p.setColor(color);
+      p.setStyle(Paint.Style.FILL_AND_STROKE);
+      p.setStrokeJoin(Paint.Join.ROUND);
+      p.setStrokeWidth(30f * s);
+
+      Path path = new Path();
+      path.moveTo(ox, oy);
+      path.lineTo(ox + 357f * s, oy + 335f * s);
+      path.lineTo(ox + 152f * s, oy + 345f * s);
+      path.lineTo(ox, oy + 475f * s);
+      path.close();
+      canvas.drawPath(path, p);
+      return bitmap;
+    }
+
     public static Bitmap get(
       Context context,
       String code,
