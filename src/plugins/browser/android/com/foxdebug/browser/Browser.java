@@ -303,7 +303,11 @@ public class Browser extends LinearLayout {
               break;
             case "Cursor":
               cursor = checked;
+              menu.setVisible("Cursor Speed", checked);
               applyCursor();
+              break;
+            case "Cursor Speed":
+              cycleCursorSpeed();
               break;
             case "Set as Default":
               if (deviceEmulator != null) {
