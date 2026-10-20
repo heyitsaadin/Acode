@@ -48,6 +48,10 @@ public class Ui {
       int size,
       int color
     ) {
+      if (CURSOR.equals(code)) {
+        return drawCursor(color);
+      }
+
       if (paint == null) {
         paint = new Paint();
         paint.setAntiAlias(true);
