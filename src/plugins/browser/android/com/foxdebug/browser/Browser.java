@@ -394,7 +394,6 @@ public class Browser extends LinearLayout {
       "if(window.__acodeCursorCleanup){window.__acodeCursorCleanup();window.__acodeCursorCleanup=null;}" +
       "if(!on)return;" +
       "var root=document.documentElement;if(!root)return;" +
-      "var OFFSET=110;" +
       // stop the page from panning / pinch-zooming / selecting text
       "var st=document.createElement('style');" +
       "st.textContent='html,body{touch-action:none!important;" +
