@@ -288,7 +288,9 @@ export default function ProfileInclude({ user, getAvatarSrc, onLogout } = {}) {
 	}
 	if (!recentFiles.length && !recentFolders.length) {
 		recent.$body.append(
-			<div className="pf-empty">Files and folders you open will show up here.</div>,
+			<div className="pf-empty">
+				Files and folders you open will show up here.
+			</div>,
 		);
 	}
 
