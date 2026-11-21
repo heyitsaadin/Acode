@@ -92,7 +92,6 @@ function create($container, $toggler) {
 	}
 
 	loginEvents.addListener(updateSidebarAvatar);
-	profileStats.init();
 
 	async function handleUserIconClick() {
 		let user = null;
