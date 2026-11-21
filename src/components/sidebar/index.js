@@ -96,43 +96,41 @@ function create($container, $toggler) {
 	loginEvents.addListener(updateSidebarAvatar);
 	profileStats.init();
 
-	async function handleUserIconClick(e) {
+	async function handleUserIconClick() {
+		let user = null;
 		try {
-			loader.create(strings["login"], strings["loading..."]);
-			let user = await auth.getLoggedInUser();
+			user = await auth.getLoggedInUser();
+		} catch (error) {
+			// offline or server error: still open the page as signed out
+			console.error("Error checking login status:", error);
+		}
 
-			if (!user) {
-				const confirmation = await confirm(
-					strings.confirm,
-					strings["confirm-login"],
-				);
-
-				if (!confirmation) {
-					return;
-				}
-
-				loader.show();
-
-				await auth.login();
-				user = await auth.getLoggedInUser();
-				if (!user) {
-					return;
-				}
-			}
-
-			loader.destroy();
+		try {
 			const { default: openProfile } = await import(
 				/* webpackChunkName: "profile" */ "pages/profile"
 			);
 			await openProfile({
 				user,
-				getAvatarSrc: () => getAvatarSrc(user),
+				getAvatarSrc,
+				onLogin: handleLogin,
 				onLogout: handleLogout,
 			});
 		} catch (error) {
-			console.error("Error checking login status:", error);
-		} finally {
-			loader.destroy();
+			console.error("Error opening profile:", error);
+		}
+	}
+
+	/**
+	 * Starts the Acode login flow. Used by the profile page.
+	 * @returns {Promise<object|null>} the logged in user, if any
+	 */
+	async function handleLogin() {
+		try {
+			await auth.login();
+			return (await auth.getLoggedInUser(true)) || null;
+		} catch (error) {
+			console.error("Error during login:", error);
+			return null;
 		}
 	}
 
