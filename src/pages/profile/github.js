@@ -131,9 +131,8 @@ export async function fetchContributions(username, { force = false } = {}) {
 /** Groups days into Sunday-first weeks of 7 (null = padding). */
 export function buildWeeks(days) {
 	const weeks = [];
-	let week = new Array(
-		new Date(`${days[0].date}T00:00:00Z`).getUTCDay(),
-	).fill(null);
+	const offset = new Date(`${days[0].date}T00:00:00Z`).getUTCDay();
+	let week = new Array(offset).fill(null);
 
 	for (const day of days) {
 		week.push(day);
