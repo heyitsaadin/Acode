@@ -302,7 +302,9 @@ export default function ProfileInclude({ user, getAvatarSrc, onLogout } = {}) {
 			title: "Plugins",
 			subtitle: "Browse and manage extensions",
 			onclick: goto(async () =>
-				(await import(/* webpackChunkName: "plugins" */ "pages/plugins")).default(),
+				(
+					await import(/* webpackChunkName: "plugins" */ "pages/plugins")
+				).default(),
 			),
 		},
 		{
