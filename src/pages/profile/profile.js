@@ -37,6 +37,9 @@ const ICONS = {
 		'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>',
 	logout:
 		'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+	login:
+		'<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>',
+	user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
 	chevron: '<polyline points="9 18 15 12 9 6"/>',
 	link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
 	verified:
@@ -87,6 +90,8 @@ function pathDetails(url) {
 	return { name, location };
 }
 
+const openUrl = (url) => () => system.openInBrowser(url);
+
 function section(title, trailing) {
 	const $body = <div className="pf-card"></div>;
 	const $head = (
@@ -133,56 +138,32 @@ function statCard(className, label, iconName) {
 	);
 }
 
-/**
- * Open the profile page.
- * @param {object} options
- * @param {object} options.user
- * @param {() => Promise<string>} [options.getAvatarSrc]
- * @param {() => Promise<boolean>} [options.onLogout]
- */
-export default function ProfileInclude({ user, getAvatarSrc, onLogout } = {}) {
-	if (!user) return;
-
-	const $page = Page("Profile");
-	$page.classList.add("profile-page");
-
-	const close = () => {
-		$page.hide();
-		Sidebar.hide();
-	};
-	const goto = (fn) => () => {
-		close();
-		setTimeout(() => {
-			try {
-				fn();
-			} catch (error) {
-				helpers.error(error);
-			}
-		}, 200);
-	};
-	const openUrl = (url) => () => system.openInBrowser(url);
-
-	/* ---------- hero ---------- */
+/** Avatar circle: initial first, swaps to the picture once it has loaded. */
+function buildAvatar(user, getAvatarSrc) {
 	const initial = (user.name || user.email || "?")
 		.trim()
 		.charAt(0)
 		.toUpperCase();
-	const $avatarImg = <img className="pf-avatar-img" alt="" />;
+	const $img = <img className="pf-avatar-img" alt="" />;
 	const $avatar = (
 		<div className="pf-avatar">
 			<span className="pf-avatar-initial">{initial}</span>
-			{$avatarImg}
+			{$img}
 		</div>
 	);
-	$avatarImg.onload = () => $avatar.classList.add("loaded");
+	$img.onload = () => $avatar.classList.add("loaded");
 	if (typeof getAvatarSrc === "function") {
-		Promise.resolve(getAvatarSrc())
+		Promise.resolve(getAvatarSrc(user))
 			.then((src) => {
-				if (src) $avatarImg.src = src;
+				if (src) $img.src = src;
 			})
 			.catch(() => {});
 	}
+	return $avatar;
+}
 
+/** Header for a logged in user. */
+function buildUserHero(user, getAvatarSrc) {
 	const $nameRow = (
 		<div className="pf-name-row">
 			<h2 className="pf-name">{user.name}</h2>
@@ -219,24 +200,159 @@ export default function ProfileInclude({ user, getAvatarSrc, onLogout } = {}) {
 	}
 	if (user.website) {
 		const site = String(user.website);
-		const $c = (
-			<div
-				className="pf-chip tap"
-				onclick={openUrl(/^https?:\/\//.test(site) ? site : `https://${site}`)}
-			></div>
-		);
+		const url = /^https?:\/\//.test(site) ? site : `https://${site}`;
+		const $c = <div className="pf-chip tap" onclick={openUrl(url)}></div>;
 		$c.append(icon("external", 14), site.replace(/^https?:\/\//, ""));
 		$chips.append($c);
 	}
 
-	const $hero = (
+	return (
 		<div className="pf-hero">
-			{$avatar}
+			{buildAvatar(user, getAvatarSrc)}
 			{$nameRow}
 			<div className="pf-email">{user.email || ""}</div>
 			{$chips}
 		</div>
 	);
+}
+
+/** Header shown when nobody is logged in, with a sign in button. */
+function buildGuestHero(onSignIn) {
+	const $label = <span>Sign in</span>;
+	const $btn = <button type="button" className="pf-btn"></button>;
+	$btn.append(icon("login", 18), $label);
+	$btn.onclick = async () => {
+		if ($btn.disabled) return;
+		$btn.disabled = true;
+		$label.textContent = "Waiting for sign in…";
+		try {
+			await onSignIn();
+		} finally {
+			$btn.disabled = false;
+			$label.textContent = "Sign in";
+		}
+	};
+
+	return (
+		<div className="pf-hero guest">
+			<div className="pf-avatar guest">{icon("user", 40)}</div>
+			<h2 className="pf-name">Welcome to Acode</h2>
+			<div className="pf-email">
+				Sign in with your Acode account to show your profile here.
+			</div>
+			{$btn}
+			<div className="pf-hint">Coding stats work without an account.</div>
+		</div>
+	);
+}
+
+/**
+ * Open the profile page. Works logged in or out.
+ * @param {object} options
+ * @param {object|null} [options.user] - logged in user, if any
+ * @param {(user:object) => Promise<string>} [options.getAvatarSrc]
+ * @param {() => Promise<object|null>} [options.onLogin] - resolves the new user
+ * @param {() => Promise<boolean>} [options.onLogout]
+ */
+export default function ProfileInclude({
+	user: initialUser = null,
+	getAvatarSrc,
+	onLogin,
+	onLogout,
+} = {}) {
+	let user = initialUser;
+
+	const $page = Page("Profile");
+	$page.classList.add("profile-page");
+
+	const close = () => {
+		$page.hide();
+		Sidebar.hide();
+	};
+	const goto = (fn) => () => {
+		close();
+		setTimeout(() => {
+			try {
+				fn();
+			} catch (error) {
+				helpers.error(error);
+			}
+		}, 200);
+	};
+
+	/* ---------- account areas (re-rendered on login / logout) ---------- */
+	const $heroSlot = <div className="pf-slot"></div>;
+	const $dangerSlot = <div className="pf-slot"></div>;
+
+	async function signIn() {
+		if (!onLogin) return;
+		const next = await onLogin();
+		if (next) {
+			user = next;
+			refreshAccount();
+		}
+	}
+
+	async function signOut() {
+		const ok = await confirm(
+			strings.logout || "Logout",
+			"Are you sure you want to log out of your Acode account?",
+		);
+		if (!ok) return;
+		const success = onLogout ? await onLogout() : true;
+		if (success === false) return;
+		user = null;
+		refreshAccount();
+	}
+
+	async function resetStats() {
+		const ok = await confirm(
+			"Reset stats",
+			"This clears your coding time, streak and save counts on this device.",
+		);
+		if (!ok) return;
+		profileStats.reset();
+		fillStats();
+	}
+
+	function renderHero() {
+		$heroSlot.textContent = "";
+		$heroSlot.append(
+			user ? buildUserHero(user, getAvatarSrc) : buildGuestHero(signIn),
+		);
+	}
+
+	function renderDanger() {
+		const $card = <div className="pf-card pf-danger-card"></div>;
+		if (user) {
+			$card.append(
+				row({
+					iconName: "logout",
+					title: strings.logout || "Logout",
+					danger: true,
+					end: <span></span>,
+					onclick: signOut,
+				}),
+			);
+		}
+		$card.append(
+			row({
+				iconName: "trash",
+				title: "Reset coding stats",
+				subtitle: "Clears the numbers above on this device",
+				danger: true,
+				end: <span></span>,
+				onclick: resetStats,
+			}),
+		);
+		$dangerSlot.textContent = "";
+		$dangerSlot.append($card);
+	}
+
+	function refreshAccount() {
+		renderHero();
+		renderDanger();
+	}
 
 	/* ---------- stats ---------- */
 	const $grid = (
@@ -354,51 +470,14 @@ export default function ProfileInclude({ user, getAvatarSrc, onLogout } = {}) {
 	];
 	for (const item of actionRows) actions.$body.append(row(item));
 
-	/* ---------- danger zone ---------- */
-	const $logout = (
-		<div className="pf-card pf-danger-card">
-			{row({
-				iconName: "logout",
-				title: strings.logout || "Logout",
-				danger: true,
-				end: <span></span>,
-				onclick: async () => {
-					const ok = await confirm(
-						strings.logout || "Logout",
-						"Are you sure you want to log out of your Acode account?",
-					);
-					if (!ok) return;
-					const success = onLogout ? await onLogout() : true;
-					if (success !== false) $page.hide();
-				},
-			})}
-			{row({
-				iconName: "trash",
-				title: "Reset coding stats",
-				subtitle: "Clears the numbers above on this device",
-				danger: true,
-				end: <span></span>,
-				onclick: async () => {
-					const ok = await confirm(
-						"Reset stats",
-						"This clears your coding time, streak and save counts on this device.",
-					);
-					if (!ok) return;
-					profileStats.reset();
-					fillStats();
-				},
-			})}
-		</div>
-	);
-
 	const $main = (
 		<main id="profile-page" className="main scroll">
-			{$hero}
+			{$heroSlot}
 			{$grid}
 			{activity.$el}
 			{recent.$el}
 			{actions.$el}
-			{$logout}
+			{$dangerSlot}
 		</main>
 	);
 
@@ -445,6 +524,7 @@ export default function ProfileInclude({ user, getAvatarSrc, onLogout } = {}) {
 		setText(".stat-plugins", String(total));
 	}
 
+	refreshAccount();
 	fillStats();
 	fillPlugins();
 
