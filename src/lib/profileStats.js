@@ -161,7 +161,11 @@ const profileStats = {
 		// Streak: consecutive active days ending today (or yesterday).
 		let streak = 0;
 		for (let i = 0; i < KEEP_DAYS; i++) {
-			const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+			const date = new Date(
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate() - i,
+			);
 			const active = isActive(s.days[dayKey(date)]);
 			if (active) streak += 1;
 			else if (i > 0) break;
