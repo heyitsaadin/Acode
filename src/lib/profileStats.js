@@ -142,7 +142,11 @@ const profileStats = {
 		const now = new Date();
 		const week = [];
 		for (let i = 6; i >= 0; i--) {
-			const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+			const date = new Date(
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate() - i,
+			);
 			const key = dayKey(date);
 			const day = s.days[key] || { ms: 0, saves: 0 };
 			week.push({
