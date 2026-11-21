@@ -43,7 +43,6 @@ function create($container, $toggler) {
 	const MAX_WIDTH = () => innerWidth * 0.7; //Max width of the side bar
 	const resizeBar = Ref();
 	const userAvatar = Ref();
-	const userContextMenu = Ref();
 
 	$container = $container || app;
 	let mode = innerWidth > 750 ? "tab" : "phone";
