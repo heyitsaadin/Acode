@@ -163,7 +163,10 @@ export default function ProfileInclude({ user, getAvatarSrc, onLogout } = {}) {
 	const openUrl = (url) => () => system.openInBrowser(url);
 
 	/* ---------- hero ---------- */
-	const initial = (user.name || user.email || "?").trim().charAt(0).toUpperCase();
+	const initial = (user.name || user.email || "?")
+		.trim()
+		.charAt(0)
+		.toUpperCase();
 	const $avatarImg = <img className="pf-avatar-img" alt="" />;
 	const $avatar = (
 		<div className="pf-avatar">
