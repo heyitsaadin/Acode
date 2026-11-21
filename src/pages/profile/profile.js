@@ -2,27 +2,29 @@ import "./profile.scss";
 import fsOperation from "fileSystem";
 import Page from "components/page";
 import Sidebar from "components/sidebar";
+import toast from "components/toast";
 import confirm from "dialogs/confirm";
+import prompt from "dialogs/prompt";
 import actionStack from "lib/actionStack";
 import config from "lib/config";
 import { LOADED_PLUGINS } from "lib/loadPlugins";
 import openFile from "lib/openFile";
 import openFolder from "lib/openFolder";
-import profileStats from "lib/profileStats";
 import recents from "lib/recents";
 import helpers from "utils/helpers";
 import Uri from "utils/Uri";
 import Url from "utils/Url";
+import {
+	buildWeeks,
+	cleanUsername,
+	fetchContributions,
+	getSavedUsername,
+	monthLabels,
+	saveUsername,
+} from "./github";
 
 /* Feather-style stroke icons, so the page never depends on the icon font. */
 const ICONS = {
-	clock:
-		'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
-	zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
-	save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
-	activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
-	layers:
-		'<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
 	package:
 		'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
 	file: '<path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/>',
@@ -41,13 +43,8 @@ const ICONS = {
 		'<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>',
 	user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
 	chevron: '<polyline points="9 18 15 12 9 6"/>',
-	link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
 	verified:
 		'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
-	calendar:
-		'<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
-	trash:
-		'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
 };
 
 function icon(name, size = 20) {
@@ -57,15 +54,6 @@ function icon(name, size = 20) {
 	return el;
 }
 
-function formatDuration(ms) {
-	const mins = Math.floor(ms / 60000);
-	if (mins < 1) return ms >= 1000 ? "<1m" : "0m";
-	const h = Math.floor(mins / 60);
-	const m = mins % 60;
-	if (h >= 100) return `${h}h`;
-	return h ? `${h}h ${m}m` : `${m}m`;
-}
-
 function formatMonthYear(value) {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return "";
@@ -73,6 +61,16 @@ function formatMonthYear(value) {
 		month: "short",
 		year: "numeric",
 	});
+}
+
+function tipText({ count, date }) {
+	const when = new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+		timeZone: "UTC",
+	});
+	return `${count} contribution${count === 1 ? "" : "s"} on ${when}`;
 }
 
 /** Same path breakdown the "recent" picker uses. */
@@ -92,24 +90,30 @@ function pathDetails(url) {
 
 const openUrl = (url) => () => system.openInBrowser(url);
 
-function section(title, trailing) {
+function section(title) {
+	const $trail = <span className="pf-section-trail"></span>;
 	const $body = <div className="pf-card"></div>;
-	const $head = (
-		<div className="pf-section-head">
-			<h3 className="pf-section-title">{title}</h3>
-		</div>
-	);
-	if (trailing) $head.append(trailing);
 	const $el = (
 		<section className="pf-section">
-			{$head}
+			<div className="pf-section-head">
+				<h3 className="pf-section-title">{title}</h3>
+				{$trail}
+			</div>
 			{$body}
 		</section>
 	);
-	return { $el, $body };
+	return { $el, $body, $trail };
 }
 
-function row({ iconName, title, subtitle, onclick, danger = false, end }) {
+function row({
+	iconName,
+	title,
+	subtitle,
+	value,
+	onclick,
+	danger = false,
+	chevron = true,
+}) {
 	const $text = (
 		<div className="pf-row-text">
 			<div className="pf-row-title">{title}</div>
@@ -120,23 +124,21 @@ function row({ iconName, title, subtitle, onclick, danger = false, end }) {
 	}
 	const $row = (
 		<div className={`pf-row${danger ? " danger" : ""}`} onclick={onclick}>
-			<div className="pf-row-icon">{icon(iconName)}</div>
+			{icon(iconName, 20)}
 			{$text}
 		</div>
 	);
-	$row.append(end || icon("chevron", 18));
+	if (value) $row.append(value);
+	if (chevron) $row.append(icon("chevron", 18));
 	return $row;
 }
 
-function statCard(className, label, iconName) {
-	return (
-		<div className="pf-stat">
-			<div className="pf-stat-icon">{icon(iconName, 18)}</div>
-			<div className={`pf-stat-value ${className}`}>–</div>
-			<div className="pf-stat-label">{label}</div>
-		</div>
-	);
-}
+const metric = (value, label) => (
+	<div className="pf-metric">
+		<div className="pf-metric-value">{String(value)}</div>
+		<div className="pf-metric-label">{label}</div>
+	</div>
+);
 
 /** Avatar circle: initial first, swaps to the picture once it has loaded. */
 function buildAvatar(user, getAvatarSrc) {
@@ -171,7 +173,7 @@ function buildUserHero(user, getAvatarSrc) {
 	);
 	if (user.verified) {
 		const $v = <span className="pf-verified" title="Verified"></span>;
-		$v.append(icon("verified", 18));
+		$v.append(icon("verified", 16));
 		$nameRow.append($v);
 	}
 	if (user.acode_pro) {
@@ -181,37 +183,30 @@ function buildUserHero(user, getAvatarSrc) {
 		$nameRow.append(<span className="pf-badge">ADMIN</span>);
 	}
 
-	const $chips = <div className="pf-chips"></div>;
+	const $meta = <div className="pf-meta"></div>;
 	const since = formatMonthYear(user.created_at);
 	if (since) {
-		const $c = <div className="pf-chip"></div>;
-		$c.append(icon("calendar", 14), `Member since ${since}`);
-		$chips.append($c);
-	}
-	if (user.github) {
-		const $c = (
-			<div
-				className="pf-chip tap"
-				onclick={openUrl(`https://github.com/${user.github}`)}
-			></div>
-		);
-		$c.append(icon("link", 14), `@${user.github}`);
-		$chips.append($c);
+		$meta.append(<span>{`Member since ${since}`}</span>);
 	}
 	if (user.website) {
 		const site = String(user.website);
 		const url = /^https?:\/\//.test(site) ? site : `https://${site}`;
-		const $c = <div className="pf-chip tap" onclick={openUrl(url)}></div>;
-		$c.append(icon("external", 14), site.replace(/^https?:\/\//, ""));
-		$chips.append($c);
+		if (since) $meta.append(<span className="pf-dot">·</span>);
+		$meta.append(
+			<span className="pf-link" onclick={openUrl(url)}>
+				{site.replace(/^https?:\/\//, "")}
+			</span>,
+		);
 	}
 
 	return (
 		<div className="pf-hero">
 			{buildAvatar(user, getAvatarSrc)}
-			{$nameRow}
-			<div className="pf-email">{user.email || ""}</div>
-			{$chips}
+			<div className="pf-hero-text">
+				{$nameRow}
+				<div className="pf-email">{user.email || ""}</div>
+				{$meta}
+			</div>
 		</div>
 	);
 }
@@ -219,8 +214,8 @@ function buildUserHero(user, getAvatarSrc) {
 /** Header shown when nobody is logged in, with a sign in button. */
 function buildGuestHero(onSignIn) {
 	const $label = <span>Sign in</span>;
-	const $btn = <button type="button" className="pf-btn"></button>;
-	$btn.append(icon("login", 18), $label);
+	const $btn = <button type="button" className="pf-btn small"></button>;
+	$btn.append(icon("login", 16), $label);
 	$btn.onclick = async () => {
 		if ($btn.disabled) return;
 		$btn.disabled = true;
@@ -234,14 +229,13 @@ function buildGuestHero(onSignIn) {
 	};
 
 	return (
-		<div className="pf-hero guest">
-			<div className="pf-avatar guest">{icon("user", 40)}</div>
-			<h2 className="pf-name">Welcome to Acode</h2>
-			<div className="pf-email">
-				Sign in with your Acode account to show your profile here.
+		<div className="pf-hero">
+			<div className="pf-avatar guest">{icon("user", 30)}</div>
+			<div className="pf-hero-text">
+				<h2 className="pf-name">Not signed in</h2>
+				<div className="pf-email">Sign in with your Acode account.</div>
+				{$btn}
 			</div>
-			{$btn}
-			<div className="pf-hint">Coding stats work without an account.</div>
 		</div>
 	);
 }
@@ -261,6 +255,7 @@ export default function ProfileInclude({
 	onLogout,
 } = {}) {
 	let user = initialUser;
+	let githubRun = 0;
 
 	const $page = Page("Profile");
 	$page.classList.add("profile-page");
@@ -280,10 +275,11 @@ export default function ProfileInclude({
 		}, 200);
 	};
 
-	/* ---------- account areas (re-rendered on login / logout) ---------- */
 	const $heroSlot = <div className="pf-slot"></div>;
-	const $dangerSlot = <div className="pf-slot"></div>;
+	const $logoutSlot = <div className="pf-slot"></div>;
+	const github = section("GitHub");
 
+	/* ---------- account ---------- */
 	async function signIn() {
 		if (!onLogin) return;
 		const next = await onLogin();
@@ -305,16 +301,6 @@ export default function ProfileInclude({
 		refreshAccount();
 	}
 
-	async function resetStats() {
-		const ok = await confirm(
-			"Reset stats",
-			"This clears your coding time, streak and save counts on this device.",
-		);
-		if (!ok) return;
-		profileStats.reset();
-		fillStats();
-	}
-
 	function renderHero() {
 		$heroSlot.textContent = "";
 		$heroSlot.append(
@@ -322,59 +308,176 @@ export default function ProfileInclude({
 		);
 	}
 
-	function renderDanger() {
-		const $card = <div className="pf-card pf-danger-card"></div>;
-		if (user) {
-			$card.append(
-				row({
-					iconName: "logout",
-					title: strings.logout || "Logout",
-					danger: true,
-					end: <span></span>,
-					onclick: signOut,
-				}),
-			);
-		}
+	function renderLogout() {
+		$logoutSlot.textContent = "";
+		if (!user) return;
+		const $card = <div className="pf-card"></div>;
 		$card.append(
 			row({
-				iconName: "trash",
-				title: "Reset coding stats",
-				subtitle: "Clears the numbers above on this device",
+				iconName: "logout",
+				title: strings.logout || "Logout",
 				danger: true,
-				end: <span></span>,
-				onclick: resetStats,
+				chevron: false,
+				onclick: signOut,
 			}),
 		);
-		$dangerSlot.textContent = "";
-		$dangerSlot.append($card);
+		$logoutSlot.append($card);
 	}
 
 	function refreshAccount() {
 		renderHero();
-		renderDanger();
+		renderLogout();
+		renderGithub();
 	}
 
-	/* ---------- stats ---------- */
-	const $grid = (
-		<div className="pf-grid">
-			{statCard("stat-time", "Coding time", "clock")}
-			{statCard("stat-streak", "Day streak", "zap")}
-			{statCard("stat-saves", "Files saved", "save")}
-			{statCard("stat-launches", "App launches", "activity")}
-			{statCard("stat-tabs", "Open files", "layers")}
-			{statCard("stat-plugins", "Plugins", "package")}
-		</div>
-	);
+	/* ---------- GitHub ---------- */
+	/** Username typed on this device wins, otherwise the one on the account. */
+	const githubName = () => getSavedUsername() || cleanUsername(user?.github);
 
-	const $chart = <div className="pf-chart"></div>;
-	const $chartNote = <div className="pf-note"></div>;
-	const activity = section("Last 7 days");
-	activity.$body.append($chart, $chartNote);
+	async function editGithub() {
+		const input = await prompt("GitHub username", githubName(), "text");
+		if (input === null || input === undefined) return;
+		const raw = String(input).trim();
+		if (!raw) {
+			saveUsername("");
+		} else {
+			const name = cleanUsername(raw);
+			if (!name) {
+				toast("That doesn't look like a GitHub username");
+				return;
+			}
+			saveUsername(name);
+		}
+		renderGithub(true);
+	}
+
+	function githubMessage(text, ...buttons) {
+		const $actions = <div className="pf-actions"></div>;
+		for (const [label, handler, ghost] of buttons) {
+			$actions.append(
+				<button
+					type="button"
+					className={`pf-btn small${ghost ? " ghost" : ""}`}
+					onclick={handler}
+				>
+					{label}
+				</button>,
+			);
+		}
+		return (
+			<div className="pf-empty">
+				<div>{text}</div>
+				{$actions}
+			</div>
+		);
+	}
+
+	function drawGithub(data) {
+		const weeks = buildWeeks(data.days);
+		const labels = monthLabels(weeks);
+		const $grid = <div className="pf-gh-grid"></div>;
+
+		weeks.forEach((week, i) => {
+			const $week = <div className="pf-gh-week"></div>;
+			$week.append(<div className="pf-gh-month">{labels[i] || ""}</div>);
+			for (const day of week) {
+				const $cell = (
+					<div
+						className={day ? `pf-gh-cell lv${day.level}` : "pf-gh-cell none"}
+					></div>
+				);
+				if (day) $cell.dataset.tip = tipText(day);
+				$week.append($cell);
+			}
+			$grid.append($week);
+		});
+
+		$grid.onclick = (e) => {
+			const tip = e.target?.dataset?.tip;
+			if (tip) toast(tip);
+		};
+
+		const $scroll = <div className="pf-gh-scroll">{$grid}</div>;
+
+		const $legend = <div className="pf-gh-legend"></div>;
+		$legend.append(<span>Less</span>);
+		for (let n = 0; n <= 4; n++) {
+			$legend.append(<span className={`pf-gh-cell lv${n}`}></span>);
+		}
+		$legend.append(<span>More</span>);
+
+		github.$body.textContent = "";
+		github.$body.append(
+			<div className="pf-metrics">
+				{metric(data.total.toLocaleString(), "Contributions")}
+				{metric(`${data.current}d`, "Current streak")}
+				{metric(`${data.longest}d`, "Longest streak")}
+			</div>,
+			$scroll,
+			<div className="pf-gh-foot">
+				<span className="pf-link" onclick={editGithub}>
+					Change username
+				</span>
+				{$legend}
+			</div>,
+		);
+
+		// Newest weeks are on the right, so start scrolled to the end.
+		setTimeout(() => {
+			$scroll.scrollLeft = $scroll.scrollWidth;
+		}, 50);
+	}
+
+	async function renderGithub(force = false) {
+		const run = ++githubRun;
+		const name = githubName();
+
+		github.$trail.textContent = "";
+		github.$body.textContent = "";
+
+		if (!name) {
+			github.$body.append(
+				githubMessage("Show your GitHub contributions here.", [
+					"Add username",
+					editGithub,
+				]),
+			);
+			return;
+		}
+
+		github.$trail.append(
+			<span
+				className="pf-link"
+				onclick={openUrl(`https://github.com/${name}`)}
+			>{`@${name}`}</span>,
+		);
+		github.$body.append(<div className="pf-empty">Loading contributions…</div>);
+
+		try {
+			const data = await fetchContributions(name, { force });
+			if (run !== githubRun) return;
+			drawGithub(data);
+		} catch (error) {
+			if (run !== githubRun) return;
+			github.$body.textContent = "";
+			const text =
+				error.message === "not-found"
+					? `Couldn't find @${name} on GitHub.`
+					: "Couldn't load contributions. Check your connection.";
+			github.$body.append(
+				githubMessage(
+					text,
+					["Retry", () => renderGithub(true)],
+					["Change username", editGithub, true],
+				),
+			);
+		}
+	}
 
 	/* ---------- recents ---------- */
-	const recent = section("Jump back in");
-	const recentFiles = recents.files.filter(Boolean).slice(0, 5);
-	const recentFolders = recents.folders.filter((f) => f?.url).slice(0, 3);
+	const recent = section("Recent");
+	const recentFiles = recents.files.filter(Boolean).slice(0, 4);
+	const recentFolders = recents.folders.filter((f) => f?.url).slice(0, 2);
 
 	for (const file of recentFiles) {
 		const { name, location } = pathDetails(file);
@@ -383,6 +486,7 @@ export default function ProfileInclude({
 				iconName: "file",
 				title: name,
 				subtitle: location,
+				chevron: false,
 				onclick: goto(() =>
 					Promise.resolve(openFile(file, { render: true })).catch((err) =>
 						helpers.error(err),
@@ -398,25 +502,23 @@ export default function ProfileInclude({
 				iconName: "folder",
 				title: name,
 				subtitle: location,
+				chevron: false,
 				onclick: goto(() => openFolder(folder.url, folder.opts)),
 			}),
 		);
 	}
-	if (!recentFiles.length && !recentFolders.length) {
-		recent.$body.append(
-			<div className="pf-empty">
-				Files and folders you open will show up here.
-			</div>,
-		);
-	}
 
-	/* ---------- quick actions ---------- */
-	const actions = section("Quick actions");
-	const actionRows = [
+	/* ---------- menu ---------- */
+	// Count of plugins downloaded to this device; tapping opens the
+	// Plugins page, which starts on its "Installed" tab.
+	const $pluginCount = <span className="pf-row-value">–</span>;
+
+	const menu = section("More");
+	const menuRows = [
 		{
 			iconName: "package",
-			title: "Plugins",
-			subtitle: "Browse and manage extensions",
+			title: "Downloaded plugins",
+			value: $pluginCount,
 			onclick: goto(async () =>
 				(
 					await import(/* webpackChunkName: "plugins" */ "pages/plugins")
@@ -426,7 +528,6 @@ export default function ProfileInclude({
 		{
 			iconName: "sliders",
 			title: "Settings",
-			subtitle: "Editor, app and file preferences",
 			onclick: goto(async () =>
 				(
 					await import(
@@ -438,7 +539,6 @@ export default function ProfileInclude({
 		{
 			iconName: "contrast",
 			title: "App theme",
-			subtitle: "Switch the look of Acode",
 			onclick: goto(async () =>
 				(
 					await import(
@@ -450,70 +550,24 @@ export default function ProfileInclude({
 		{
 			iconName: "folder",
 			title: "Open folder",
-			subtitle: "Add a project to the sidebar",
 			onclick: goto(() => acode.exec("open-folder")),
 		},
 		{
 			iconName: "external",
 			title: "Acode account",
-			subtitle: String(config.BASE_URL || "").replace(/^https?:\/\//, ""),
+			value: String(config.BASE_URL || "").replace(/^https?:\/\//, ""),
 			onclick: openUrl(config.BASE_URL),
 		},
 		{
 			iconName: "info",
 			title: "About",
-			subtitle: `Version ${window.BuildInfo?.version || ""}`.trim(),
+			value: window.BuildInfo?.version || "",
 			onclick: goto(async () =>
 				(await import(/* webpackChunkName: "about" */ "pages/about")).default(),
 			),
 		},
 	];
-	for (const item of actionRows) actions.$body.append(row(item));
-
-	const $main = (
-		<main id="profile-page" className="main scroll">
-			{$heroSlot}
-			{$grid}
-			{activity.$el}
-			{recent.$el}
-			{actions.$el}
-			{$dangerSlot}
-		</main>
-	);
-
-	/* ---------- data ---------- */
-	const setText = (selector, text) => {
-		const $el = $main.querySelector(selector);
-		if ($el) $el.textContent = text;
-	};
-
-	function fillStats() {
-		const s = profileStats.getStats();
-		setText(".stat-time", formatDuration(s.totalMs));
-		setText(".stat-streak", `${s.streak}d`);
-		setText(".stat-saves", String(s.saves));
-		setText(".stat-launches", String(s.launches));
-		setText(".stat-tabs", String(window.editorManager?.files?.length ?? 0));
-
-		const max = Math.max(...s.week.map((d) => d.ms), 1);
-		$chart.textContent = "";
-		for (const day of s.week) {
-			const pct = day.ms > 0 ? Math.max((day.ms / max) * 100, 8) : 0;
-			const $bar = <div className="pf-bar"></div>;
-			$bar.style.height = `${pct}%`;
-			const $col = (
-				<div
-					className={`pf-bar-col${day.isToday ? " today" : ""}${day.ms ? " has-data" : ""}`}
-					title={`${formatDuration(day.ms)} · ${day.saves} saves`}
-				>
-					<div className="pf-bar-track">{$bar}</div>
-					<div className="pf-bar-label">{day.label}</div>
-				</div>
-			);
-			$chart.append($col);
-		}
-		$chartNote.textContent = `${formatDuration(s.weekMs)} coding · ${s.weekSaves} saves this week. Tracked on this device only.`;
-	}
+	for (const item of menuRows) menu.$body.append(row(item));
 
 	async function fillPlugins() {
 		let total = LOADED_PLUGINS.size;
@@ -521,11 +575,16 @@ export default function ProfileInclude({
 			const list = await fsOperation(PLUGIN_DIR).lsDir();
 			total = list.length;
 		} catch {}
-		setText(".stat-plugins", String(total));
+		$pluginCount.textContent = String(total);
 	}
 
+	/* ---------- assemble ---------- */
+	const $main = <main id="profile-page" className="main scroll"></main>;
+	$main.append($heroSlot, github.$el);
+	if (recentFiles.length || recentFolders.length) $main.append(recent.$el);
+	$main.append(menu.$el, $logoutSlot);
+
 	refreshAccount();
-	fillStats();
 	fillPlugins();
 
 	$page.body = $main;
