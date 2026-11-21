@@ -7,6 +7,7 @@ import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
+import profileStats from "lib/profileStats";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
