@@ -1185,8 +1185,11 @@ class CursorScript {
       // position
       "var pos=window.__acodeCursorPos;var b0=bounds();",
       "var cx=pos?pos[0]:(b0.x0+b0.x1)/2,cy=pos?pos[1]:(b0.y0+b0.y1)/2;",
-      "function draw(){var b=bounds();window.__acodeCursorPos=[cx,cy];",
-      "c.style.transform='translate('+(cx-hot[0]/b.s)+'px,'+(cy-hot[1]/b.s)+'px) scale('+(1/b.s)+')';}",
+      // K = real screen pixels per CSS pixel; M = scale that gives the cursor a fixed physical size
+      "function K(){var b=bounds();var w=b.x1-b.x0;return (cfg.sw>0&&w>0)?cfg.sw/w:1;}",
+      "function M(){return (cfg.base*cfg.size)/(24*K());}",
+      "function draw(){window.__acodeCursorPos=[cx,cy];var m=M();",
+      "c.style.transform='translate('+(cx-hot[0]*m)+'px,'+(cy-hot[1]*m)+'px) scale('+m+')';}",
       "function nudge(dx,dy){var b=bounds();",
       "cx=Math.max(b.x0,Math.min(b.x1-1,cx+dx));",
       "cy=Math.max(b.y0,Math.min(b.y1-1,cy+dy));draw();}",
