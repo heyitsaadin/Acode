@@ -49,6 +49,14 @@ import android.webkit.WebView;
 import android.widget.Toast;
 import android.os.Handler;
 import android.os.Looper;
+import android.app.Dialog;
+import android.graphics.drawable.ColorDrawable;
+import android.view.MotionEvent;
+import android.view.ViewConfiguration;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.SeekBar;
 
 
 
@@ -75,9 +83,26 @@ public class Browser extends LinearLayout {
   // time the browser is launched.
   public boolean cursor = false;
   // How far the cursor moves per unit of finger movement (trackpad speed).
-  // Tap "Cursor Speed" in the menu to cycle through CURSOR_SPEEDS.
+  // Adjusted with the "Cursor Settings" slider (continuous), saved in prefs.
   public float cursorSpeed = 1.5f;
-  private static final float[] CURSOR_SPEEDS = { 0.5f, 1f, 1.5f, 2f, 3f, 4f };
+  // Cursor size multiplier (1 = default size). Also set in "Cursor Settings".
+  public float cursorSize = 1f;
+  // Cursor size at 1x, in dp, independent of preview zoom / device preset.
+  private static final float CURSOR_BASE_DP = 12f;
+  private static final float SPEED_MIN = 0.2f;
+  private static final float SPEED_MAX = 6f;
+  private static final float SIZE_MIN = 0.4f;
+  private static final float SIZE_MAX = 2.5f;
+  private static final int SEEK_STEPS = 200;
+
+  private Dialog cursorDialog;
+  // Native trackpad state, used for the area around/under the preview.
+  private float padX;
+  private float padY;
+  private float padDownX;
+  private float padDownY;
+  private long padDownTime;
+  private boolean padMoved;
 
   private String url = "";
   private String title = "Browser";
@@ -102,6 +127,7 @@ public class Browser extends LinearLayout {
     this.imageSize = Ui.dpToPixels(context, 35);
     this.titleHeight = Ui.dpToPixels(context, 45);
     this.titleTextHeight = Ui.dpToPixels(context, 35);
+    loadCursorPrefs();
 
     this.init();
   }
@@ -227,6 +253,7 @@ public class Browser extends LinearLayout {
     );
     webViewContainer.setBackgroundColor(theme.get("primaryColor"));
     webViewContainer.addView(webView);
+    installTrackpad(webViewContainer);
 
     setOrientation(LinearLayout.VERTICAL);
     setFocusableInTouchMode(true);
@@ -245,9 +272,10 @@ public class Browser extends LinearLayout {
     menu.addItem(Ui.Icons.NO_CACHE, "Disable Cache", false);
     menu.addItem(Ui.Icons.TERMINAL, "Console", false);
     menu.addItem(Ui.Icons.CURSOR, "Cursor", false);
-    menu.addItem(Ui.Icons.TUNE, "Cursor Speed");
-    menu.setVisible("Cursor Speed", false);
-    menu.setLabel("Cursor Speed", cursorSpeedLabel());
+    menu.addItem(Ui.Icons.TUNE, "Cursor Settings");
+    menu.setVisible("Cursor Settings", false);
+    menu.addItem(Ui.Icons.DEVICES, "Preview Controls", true);
+    menu.setVisible("Preview Controls", false);
     menu.addItem(Ui.Icons.TUNE, "Set as Default");
     menu.addItem(Ui.Icons.REFRESH, "Clear Default");
     menu.setVisible("Set as Default", false);
@@ -273,6 +301,7 @@ public class Browser extends LinearLayout {
                 menu.setChecked("Console", false);
                 menu.setVisible("Console", false);
                 addView(deviceEmulator);
+                onEmulatorShown();
                 fitWebViewTo(
                   deviceEmulator.getWidthProgress(),
                   deviceEmulator.getHeightProgress(),
@@ -281,6 +310,7 @@ public class Browser extends LinearLayout {
               } else {
                 menu.setVisible("Console", true);
                 removeView(deviceEmulator);
+                menu.setVisible("Preview Controls", false);
                 fitWebViewTo(0, 0, 1);
                 webView
                   .getViewTreeObserver()
@@ -303,11 +333,17 @@ public class Browser extends LinearLayout {
               break;
             case "Cursor":
               cursor = checked;
-              menu.setVisible("Cursor Speed", checked);
+              menu.setVisible("Cursor Settings", checked);
+              if (!checked && cursorDialog != null) {
+                cursorDialog.dismiss();
+              }
               applyCursor();
               break;
-            case "Cursor Speed":
-              cycleCursorSpeed();
+            case "Cursor Settings":
+              showCursorSettings();
+              break;
+            case "Preview Controls":
+              setControlsVisible(checked);
               break;
             case "Set as Default":
               if (deviceEmulator != null) {
@@ -353,26 +389,300 @@ public class Browser extends LinearLayout {
     );
   }
 
-  private String cursorSpeedLabel() {
-    return "Cursor Speed: " + cursorSpeed + "x";
+  private float density() {
+    return context.getResources().getDisplayMetrics().density;
   }
 
-  /** Moves to the next speed in CURSOR_SPEEDS (wrapping) and applies it. */
-  private void cycleCursorSpeed() {
-    int index = 0;
-    for (int i = 0; i < CURSOR_SPEEDS.length; i++) {
-      if (CURSOR_SPEEDS[i] == cursorSpeed) {
-        index = i;
-        break;
+  private static float clampf(float v, float lo, float hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  private static int toProgress(float v, float lo, float hi) {
+    return Math.round(((v - lo) / (hi - lo)) * SEEK_STEPS);
+  }
+
+  private static float fromProgress(int p, float lo, float hi) {
+    return lo + ((hi - lo) * p) / (float) SEEK_STEPS;
+  }
+
+  private void loadCursorPrefs() {
+    android.content.SharedPreferences prefs = context.getSharedPreferences(
+      "acode_browser",
+      Context.MODE_PRIVATE
+    );
+    cursorSpeed = clampf(prefs.getFloat("cursor_speed", 1.5f), SPEED_MIN, SPEED_MAX);
+    cursorSize = clampf(prefs.getFloat("cursor_size", 1f), SIZE_MIN, SIZE_MAX);
+  }
+
+  private void saveCursorPrefs() {
+    context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .edit()
+      .putFloat("cursor_speed", cursorSpeed)
+      .putFloat("cursor_size", cursorSize)
+      .apply();
+  }
+
+  private String speedText() {
+    return String.format("Cursor speed: %.2fx", cursorSpeed);
+  }
+
+  private String sizeText() {
+    return String.format("Cursor size: %.2fx", cursorSize);
+  }
+
+  /**
+   * On-screen width (in real pixels, including the preview scale) of the page
+   * area. The cursor script uses it to know how many screen pixels one CSS
+   * pixel is, so the cursor keeps the same physical size and the same
+   * sensitivity on every device preset / zoom level.
+   */
+  private float previewScreenWidth() {
+    int w = webView.getWidth();
+    if (w <= 0 && webView.getParent() != null) {
+      w = ((View) webView.getParent()).getWidth();
+    }
+    return w * webView.getScaleX();
+  }
+
+  /** Pushes the current speed/size into an already injected cursor. */
+  private void pushCursorSettings(float screenWidth) {
+    if (!cursor) return;
+    webView.evaluateJavascript(
+      "window.__acodeCursorSet&&window.__acodeCursorSet(" +
+      cursorSpeed + "," + cursorSize + "," + screenWidth + "," +
+      (CURSOR_BASE_DP * density()) + ");",
+      null
+    );
+  }
+
+  private void moveCursorBy(float dx, float dy) {
+    webView.evaluateJavascript(
+      "window.__acodeCursorMove&&window.__acodeCursorMove(" + dx + "," + dy + ");",
+      null
+    );
+  }
+
+  private void clickCursor() {
+    webView.evaluateJavascript(
+      "window.__acodeCursorClick&&window.__acodeCursorClick();",
+      null
+    );
+  }
+
+  /**
+   * Makes the whole area around the preview (the empty space above/below it,
+   * e.g. under a desktop-sized preview) act as a trackpad: drag to move the
+   * cursor, quick tap to click. Touches on the page itself are handled by the
+   * injected script, so both behave the same.
+   */
+  @SuppressWarnings("ClickableViewAccessibility")
+  private void installTrackpad(View area) {
+    final int slop = ViewConfiguration.get(context).getScaledTouchSlop();
+    area.setOnTouchListener(
+      new View.OnTouchListener() {
+        @Override
+        public boolean onTouch(View v, MotionEvent e) {
+          if (!cursor) return false;
+
+          switch (e.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+              padX = padDownX = e.getX();
+              padY = padDownY = e.getY();
+              padDownTime = e.getEventTime();
+              padMoved = false;
+              return true;
+            case MotionEvent.ACTION_MOVE:
+              float x = e.getX();
+              float y = e.getY();
+              if (
+                !padMoved &&
+                Math.abs(x - padDownX) + Math.abs(y - padDownY) > slop
+              ) {
+                padMoved = true;
+                padX = padDownX;
+                padY = padDownY;
+              }
+              if (padMoved) {
+                moveCursorBy(x - padX, y - padY);
+              }
+              padX = x;
+              padY = y;
+              return true;
+            case MotionEvent.ACTION_UP:
+              if (!padMoved && e.getEventTime() - padDownTime < 300) {
+                clickCursor();
+              }
+              return true;
+            default:
+              return true;
+          }
+        }
       }
+    );
+  }
+
+  /** Shows or hides the bottom Width/Height/Scale/device panel. */
+  private void setControlsVisible(boolean visible) {
+    if (deviceEmulator != null) {
+      deviceEmulator.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+  }
+
+  /** Called whenever the device panel is added, so it starts out visible. */
+  private void onEmulatorShown() {
+    setControlsVisible(true);
+    menu.setVisible("Preview Controls", true);
+    menu.setChecked("Preview Controls", true);
+  }
+
+  /**
+   * Floating panel with live sliders for cursor speed and size. It does not
+   * dim or block the screen, so the cursor can be dragged around while tuning.
+   */
+  private void showCursorSettings() {
+    if (cursorDialog != null && cursorDialog.isShowing()) return;
+
+    final int pad = Ui.dpToPixels(context, 14);
+    final int textColor = theme.get("primaryTextColor");
+    final float radius = Ui.dpToPixels(context, 14);
+
+    LinearLayout panel = new LinearLayout(context);
+    panel.setOrientation(LinearLayout.VERTICAL);
+    panel.setPadding(pad, pad, pad, pad);
+    GradientDrawable background = new GradientDrawable();
+    background.setColor(theme.get("primaryColor"));
+    background.setCornerRadii(
+      new float[] { radius, radius, radius, radius, 0, 0, 0, 0 }
+    );
+    panel.setBackgroundDrawable(background);
+
+    final TextView speedLabel = new TextView(context);
+    speedLabel.setTextColor(textColor);
+    speedLabel.setText(speedText());
+
+    final SeekBar speedBar = new SeekBar(context);
+    speedBar.setMax(SEEK_STEPS);
+    speedBar.setProgress(toProgress(cursorSpeed, SPEED_MIN, SPEED_MAX));
+    speedBar.setOnSeekBarChangeListener(
+      new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+          if (!fromUser) return;
+          cursorSpeed = fromProgress(progress, SPEED_MIN, SPEED_MAX);
+          speedLabel.setText(speedText());
+          pushCursorSettings(previewScreenWidth());
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar bar) {}
+
+        @Override
+        public void onStopTrackingTouch(SeekBar bar) {
+          saveCursorPrefs();
+        }
+      }
+    );
+
+    final TextView sizeLabel = new TextView(context);
+    sizeLabel.setTextColor(textColor);
+    sizeLabel.setText(sizeText());
+
+    final SeekBar sizeBar = new SeekBar(context);
+    sizeBar.setMax(SEEK_STEPS);
+    sizeBar.setProgress(toProgress(cursorSize, SIZE_MIN, SIZE_MAX));
+    sizeBar.setOnSeekBarChangeListener(
+      new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+          if (!fromUser) return;
+          cursorSize = fromProgress(progress, SIZE_MIN, SIZE_MAX);
+          sizeLabel.setText(sizeText());
+          pushCursorSettings(previewScreenWidth());
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar bar) {}
+
+        @Override
+        public void onStopTrackingTouch(SeekBar bar) {
+          saveCursorPrefs();
+        }
+      }
+    );
+
+    LinearLayout buttons = new LinearLayout(context);
+    buttons.setOrientation(LinearLayout.HORIZONTAL);
+    buttons.setGravity(Gravity.END);
+
+    Button reset = new Button(context);
+    reset.setText("Reset");
+    Button done = new Button(context);
+    done.setText("Done");
+    buttons.addView(reset);
+    buttons.addView(done);
+
+    panel.addView(speedLabel);
+    panel.addView(speedBar);
+    panel.addView(sizeLabel);
+    panel.addView(sizeBar);
+    panel.addView(buttons);
+
+    final Dialog dialog = new Dialog(context);
+    dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+    dialog.setContentView(panel);
+
+    reset.setOnClickListener(
+      new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          cursorSpeed = 1.5f;
+          cursorSize = 1f;
+          speedBar.setProgress(toProgress(cursorSpeed, SPEED_MIN, SPEED_MAX));
+          sizeBar.setProgress(toProgress(cursorSize, SIZE_MIN, SIZE_MAX));
+          speedLabel.setText(speedText());
+          sizeLabel.setText(sizeText());
+          pushCursorSettings(previewScreenWidth());
+          saveCursorPrefs();
+        }
+      }
+    );
+
+    done.setOnClickListener(
+      new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          dialog.dismiss();
+        }
+      }
+    );
+
+    dialog.setOnDismissListener(
+      new android.content.DialogInterface.OnDismissListener() {
+        @Override
+        public void onDismiss(android.content.DialogInterface d) {
+          saveCursorPrefs();
+          cursorDialog = null;
+        }
+      }
+    );
+
+    Window window = dialog.getWindow();
+    if (window != null) {
+      window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+      window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+      // Let touches outside the panel through so the cursor can be moved
+      // while the sliders are open.
+      window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL);
+      window.setLayout(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.WRAP_CONTENT
+      );
+      window.setGravity(Gravity.BOTTOM);
     }
 
-    cursorSpeed = CURSOR_SPEEDS[(index + 1) % CURSOR_SPEEDS.length];
-    menu.setLabel("Cursor Speed", cursorSpeedLabel());
-    Toast
-      .makeText(context, "Cursor speed: " + cursorSpeed + "x", Toast.LENGTH_SHORT)
-      .show();
-    applyCursor();
+    cursorDialog = dialog;
+    dialog.show();
   }
 
   /**
@@ -383,7 +693,16 @@ public class Browser extends LinearLayout {
    */
   public void applyCursor() {
     // The injected script lives in CursorScript (bottom of this file).
-    webView.evaluateJavascript(CursorScript.build(cursor, cursorSpeed), null);
+    webView.evaluateJavascript(
+      CursorScript.build(
+        cursor,
+        cursorSpeed,
+        cursorSize,
+        previewScreenWidth(),
+        CURSOR_BASE_DP * density()
+      ),
+      null
+    );
   }
 
   private void updateDefaultItems(boolean emulatorOn) {
@@ -448,6 +767,7 @@ public class Browser extends LinearLayout {
             menu.setChecked("Console", false);
             menu.setVisible("Console", false);
             addView(deviceEmulator);
+            onEmulatorShown();
             // The emulator sets up its sliders on a later layout pass and then
             // applies the saved size itself, so the webview is not resized here.
           }
@@ -459,6 +779,15 @@ public class Browser extends LinearLayout {
     Browser browser = this;
     deviceEmulator = new Emulator(context, theme);
     deviceEmulator.setReference(webView);
+    deviceEmulator.setHideListener(
+      new Runnable() {
+        @Override
+        public void run() {
+          setControlsVisible(false);
+          menu.setChecked("Preview Controls", false);
+        }
+      }
+    );
     deviceEmulator.setChangeListener(
       new Emulator.Callback() {
         @Override
@@ -581,6 +910,13 @@ public class Browser extends LinearLayout {
     );
     if (width > 0 && height > 0) {
       updateViewportDimension(width, height);
+    }
+
+    if (cursor && webView.getParent() != null) {
+      int shownWidth = width == 0
+        ? ((View) webView.getParent()).getWidth()
+        : width;
+      pushCursorSettings(shownWidth * scale);
     }
   }
 
@@ -766,15 +1102,23 @@ public class Browser extends LinearLayout {
  */
 class CursorScript {
 
-  static String build(boolean on, float speed) {
+  static String build(
+    boolean on,
+    float speed,
+    float size,
+    float screenW,
+    float basePx
+  ) {
     String[] js = {
-      "(function(on,SPEED){",
+      "(function(on,SPEED,SIZE,SW,BASE){",
       "if(window.__acodeCursorCleanup){window.__acodeCursorCleanup();window.__acodeCursorCleanup=null;}",
       "if(!on)return;",
       "var root=document.documentElement;if(!root)return;",
       "var NS='http://www.w3.org/2000/svg';",
       "var HV='__acode_hv';",
       "var cur='',hot=[0,0],hv=null,gesture=false;",
+      // live config: speed, size multiplier, on-screen px width of the page, base cursor px
+      "var cfg={speed:SPEED,size:SIZE,sw:SW,base:BASE};",
       "var t0=0,sx=0,sy=0,lx=0,ly=0,moved=false,active=false;",
       // visible area, so the cursor also behaves while pinch-zoomed
       "function bounds(){var v=window.visualViewport;",
@@ -797,7 +1141,8 @@ class CursorScript {
       "return css;}",
       // block panning / text selection but keep pinch zoom
       "var st=document.createElement('style');",
-      "st.textContent='html,body,*{touch-action:pinch-zoom!important;-webkit-user-select:none!important;user-select:none!important;}'+hoverCss();",
+      // outline/tap-highlight off: clicking with the cursor focuses elements, which otherwise draws a yellow ring
+      "st.textContent='html,body,*{touch-action:pinch-zoom!important;-webkit-user-select:none!important;user-select:none!important;-webkit-tap-highlight-color:transparent!important;}*:focus,*:focus-visible,*:active{outline:none!important;}'+hoverCss();",
       "(document.head||root).appendChild(st);",
       "var c=document.createElement('div');",
       "c.style.cssText='position:fixed;left:0;top:0;width:24px;height:24px;pointer-events:none;z-index:2147483647;transform-origin:0 0;will-change:transform;';",
@@ -841,8 +1186,11 @@ class CursorScript {
       // position
       "var pos=window.__acodeCursorPos;var b0=bounds();",
       "var cx=pos?pos[0]:(b0.x0+b0.x1)/2,cy=pos?pos[1]:(b0.y0+b0.y1)/2;",
-      "function draw(){var b=bounds();window.__acodeCursorPos=[cx,cy];",
-      "c.style.transform='translate('+(cx-hot[0]/b.s)+'px,'+(cy-hot[1]/b.s)+'px) scale('+(1/b.s)+')';}",
+      // K = real screen pixels per CSS pixel; M = scale that gives the cursor a fixed physical size
+      "function K(){var b=bounds();var w=b.x1-b.x0;return (cfg.sw>0&&w>0)?cfg.sw/w:1;}",
+      "function M(){return (cfg.base*cfg.size)/(24*K());}",
+      "function draw(){window.__acodeCursorPos=[cx,cy];var m=M();",
+      "c.style.transform='translate('+(cx-hot[0]*m)+'px,'+(cy-hot[1]*m)+'px) scale('+m+')';}",
       "function nudge(dx,dy){var b=bounds();",
       "cx=Math.max(b.x0,Math.min(b.x1-1,cx+dx));",
       "cy=Math.max(b.y0,Math.min(b.y1-1,cy+dy));draw();}",
@@ -887,7 +1235,7 @@ class CursorScript {
       "function onTM(e){if(gesture||e.touches.length>1){gesture=true;return;}",
       "var t=e.touches[0];if(!t)return;",
       "if(!moved&&Math.abs(t.clientX-sx)+Math.abs(t.clientY-sy)>10){moved=true;lx=sx;ly=sy;}",
-      "if(moved){nudge((t.clientX-lx)*SPEED,(t.clientY-ly)*SPEED);hover(true);}",
+      "if(moved){nudge((t.clientX-lx)*cfg.speed,(t.clientY-ly)*cfg.speed);hover(true);}",
       "lx=t.clientX;ly=t.clientY;}",
       "function onTE(e){if(e.touches.length>0)return;",
       "if(active&&!moved&&!gesture&&Date.now()-t0<300)clickAtCursor();",
@@ -909,8 +1257,13 @@ class CursorScript {
       "function vp(){nudge(0,0);}",
       "if(vv){vv.addEventListener('resize',vp);vv.addEventListener('scroll',vp);}",
       // layout can change under a resting cursor (after a click, animations)
-      "var iv=setInterval(function(){hover(false);},250);",
+      "var iv=setInterval(function(){hover(false);draw();},250);",
+      // hooks called from Java: native trackpad (area outside the page) and settings sliders
+      "window.__acodeCursorMove=function(dx,dy){var f=cfg.speed/K();nudge(dx*f,dy*f);hover(true);};",
+      "window.__acodeCursorClick=function(){clickAtCursor();};",
+      "window.__acodeCursorSet=function(sp,sz,sw,bs){cfg.speed=sp;cfg.size=sz;cfg.sw=sw;cfg.base=bs;draw();};",
       "window.__acodeCursorCleanup=function(){",
+      "window.__acodeCursorMove=null;window.__acodeCursorClick=null;window.__acodeCursorSet=null;",
       "clearInterval(iv);",
       "types.forEach(function(t){window.removeEventListener(t,block,o);});",
       "if(vv){vv.removeEventListener('resize',vp);vv.removeEventListener('scroll',vp);}",
@@ -925,7 +1278,18 @@ class CursorScript {
     for (String line : js) {
       sb.append(line).append('\n');
     }
-    sb.append('(').append(on).append(',').append(speed).append(");");
+    sb
+      .append('(')
+      .append(on)
+      .append(',')
+      .append(speed)
+      .append(',')
+      .append(size)
+      .append(',')
+      .append(screenW)
+      .append(',')
+      .append(basePx)
+      .append(");");
     return sb.toString();
   }
 }
