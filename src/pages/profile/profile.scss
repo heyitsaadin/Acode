@@ -515,7 +515,10 @@
       filter 0.12s ease;
 
     &.small { padding: 7px 16px; font-size: 13px; margin-top: 0; }
-    &:active { filter: brightness(0.9); }
+    &:active {
+      filter: brightness(0.9);
+      transform: scale(0.97);
+    }
     &:disabled { opacity: 0.6; }
   }
 
