@@ -475,7 +475,7 @@ export default function ProfileInclude({
 					if (day.date === todayKey && !isPlaceholder) cellClass += " today";
 				}
 				const $cell = <div className={cellClass}></div>;
-				if (day) $cell.dataset.tip = tipText(day);
+				if (day && !isPlaceholder) $cell.dataset.tip = tipText(day);
 				$week.append($cell);
 			}
 			$grid.append($week);
