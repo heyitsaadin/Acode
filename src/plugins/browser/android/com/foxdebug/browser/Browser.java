@@ -1256,7 +1256,7 @@ class CursorScript {
       "function vp(){nudge(0,0);}",
       "if(vv){vv.addEventListener('resize',vp);vv.addEventListener('scroll',vp);}",
       // layout can change under a resting cursor (after a click, animations)
-      "var iv=setInterval(function(){hover(false);},250);",
+      "var iv=setInterval(function(){hover(false);draw();},250);",
       // hooks called from Java: native trackpad (area outside the page) and settings sliders
       "window.__acodeCursorMove=function(dx,dy){var f=cfg.speed/K();nudge(dx*f,dy*f);hover(true);};",
       "window.__acodeCursorClick=function(){clickAtCursor();};",
