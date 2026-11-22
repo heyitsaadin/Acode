@@ -86,6 +86,28 @@ public class Ui {
       return bitmap;
     }
 
+    /** Draws an eye with a slash through it (like a "hide password" icon). */
+    private static Bitmap drawEyeOff(int color) {
+      int px = 96;
+      Bitmap bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+      Canvas canvas = new Canvas(bitmap);
+      Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+      p.setColor(color);
+      p.setStyle(Paint.Style.STROKE);
+      p.setStrokeWidth(7f);
+      p.setStrokeCap(Paint.Cap.ROUND);
+      p.setStrokeJoin(Paint.Join.ROUND);
+
+      Path eye = new Path();
+      eye.moveTo(8f, 48f);
+      eye.quadTo(48f, 4f, 88f, 48f);
+      eye.quadTo(48f, 92f, 8f, 48f);
+      canvas.drawPath(eye, p);
+      canvas.drawCircle(48f, 48f, 14f, p);
+      canvas.drawLine(18f, 14f, 78f, 82f, p);
+      return bitmap;
+    }
+
     /** Draws the cursor arrow (same shape as the in-page cursor). */
     private static Bitmap drawCursor(int color) {
       int px = 96;
