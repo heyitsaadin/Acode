@@ -75,13 +75,8 @@ function tipText(day) {
 		year: "numeric",
 		timeZone: "UTC",
 	});
-	if (!day.ms && !day.lines && !day.files) return `No activity on ${when}`;
-	return [
-		when,
-		formatDuration(day.ms),
-		plural(day.lines, "line"),
-		plural(day.files, "file"),
-	].join(" · ");
+	if (!day.level) return `No activity on ${when}`;
+	return `${when} · ${formatDuration(day.ms)}`;
 }
 
 /** Same path breakdown the "recent" picker uses. */
