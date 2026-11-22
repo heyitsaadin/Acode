@@ -97,6 +97,7 @@ import ScrollBar from "components/scrollbar";
 import SideButton, { sideButtonContainer } from "components/sideButton";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import { animate } from "motion";
+import activity from "./activity";
 import config from "./config";
 import EditorFile, { AUTO_SAVE } from "./editorFile";
 import openFile from "./openFile";
