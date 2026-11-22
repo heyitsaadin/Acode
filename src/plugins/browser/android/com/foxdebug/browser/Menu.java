@@ -114,6 +114,17 @@ public class Menu extends PopupWindow {
     }
   }
 
+  /** Changes the visible label of an item without changing its action id. */
+  public void setLabel(String action, String text) {
+    for (int i = 0; i < list.getChildCount(); i++) {
+      MenuItem menuItem = (MenuItem) list.getChildAt(i);
+      if (menuItem.action.equals(action)) {
+        menuItem.setLabel(text);
+        break;
+      }
+    }
+  }
+
   public void setVisible(String action, Boolean visible) {
     for (int i = 0; i < list.getChildCount(); i++) {
       MenuItem menuItem = (MenuItem) list.getChildAt(i);
@@ -212,6 +223,14 @@ class MenuItem extends LinearLayout {
     textView.setGravity(Gravity.CENTER_VERTICAL);
     textView.setLayoutParams(textViewParams);
     addView(textView, 1);
+  }
+
+  public void setLabel(String text) {
+    // Children are laid out as [icon, label, ...], see Menu.addItem().
+    View label = getChildAt(1);
+    if (label instanceof TextView) {
+      ((TextView) label).setText(text);
+    }
   }
 
   public void setChecked(boolean checked) {

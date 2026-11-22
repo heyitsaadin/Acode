@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Typeface;
 import android.util.Log;
 import android.util.TypedValue;
@@ -32,6 +33,14 @@ public class Ui {
     public static final String LAPTOP = "\uE90D";
     public static final String TV = "\uE929";
 
+    // Not a glyph in icon.ttf: this code is intercepted in get() and the
+    // cursor arrow is drawn directly with a Canvas instead.
+    public static final String CURSOR = "\uF8FF";
+
+    // Also not a glyph in icon.ttf: drawn with a Canvas in get() (eye with a
+    // slash, like a "hide password" icon).
+    public static final String VISIBILITY_OFF = "\uF8FE";
+
     private static Paint paint;
     private static int size = 24;
     private static int color = Color.parseColor("#FFFFFF");
@@ -43,6 +52,14 @@ public class Ui {
       int size,
       int color
     ) {
+      if (CURSOR.equals(code)) {
+        return drawCursor(color);
+      }
+
+      if (VISIBILITY_OFF.equals(code)) {
+        return drawEyeOff(color);
+      }
+
       if (paint == null) {
         paint = new Paint();
         paint.setAntiAlias(true);
@@ -66,6 +83,54 @@ public class Ui {
       Canvas canvas = new Canvas(bitmap);
 
       canvas.drawText(code, width / 2, baseline, paint);
+      return bitmap;
+    }
+
+    /** Draws an eye with a slash through it (like a "hide password" icon). */
+    private static Bitmap drawEyeOff(int color) {
+      int px = 96;
+      Bitmap bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+      Canvas canvas = new Canvas(bitmap);
+      Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+      p.setColor(color);
+      p.setStyle(Paint.Style.STROKE);
+      p.setStrokeWidth(7f);
+      p.setStrokeCap(Paint.Cap.ROUND);
+      p.setStrokeJoin(Paint.Join.ROUND);
+
+      Path eye = new Path();
+      eye.moveTo(8f, 48f);
+      eye.quadTo(48f, 4f, 88f, 48f);
+      eye.quadTo(48f, 92f, 8f, 48f);
+      canvas.drawPath(eye, p);
+      canvas.drawCircle(48f, 48f, 14f, p);
+      canvas.drawLine(18f, 14f, 78f, 82f, p);
+      return bitmap;
+    }
+
+    /** Draws the cursor arrow (same shape as the in-page cursor). */
+    private static Bitmap drawCursor(int color) {
+      int px = 96;
+      // The arrow outline is 357 x 475 units; fit it into the bitmap.
+      float s = (px * 0.9f) / 475f;
+      float ox = (px - 357f * s) / 2f;
+      float oy = (px - 475f * s) / 2f;
+
+      Bitmap bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+      Canvas canvas = new Canvas(bitmap);
+      Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+      p.setColor(color);
+      p.setStyle(Paint.Style.FILL_AND_STROKE);
+      p.setStrokeJoin(Paint.Join.ROUND);
+      p.setStrokeWidth(30f * s);
+
+      Path path = new Path();
+      path.moveTo(ox, oy);
+      path.lineTo(ox + 357f * s, oy + 335f * s);
+      path.lineTo(ox + 152f * s, oy + 345f * s);
+      path.lineTo(ox, oy + 475f * s);
+      path.close();
+      canvas.drawPath(path, p);
       return bitmap;
     }
 
