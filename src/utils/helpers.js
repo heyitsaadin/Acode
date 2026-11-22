@@ -464,6 +464,8 @@ export default {
 					? await fsOperation(baseUri).createFile(name)
 					: await fsOperation(baseUri).createDirectory(name);
 
+			if (expectedType === "file") activity.recordFileCreated();
+
 			return {
 				url: createdUrl || targetUri,
 				created: true,
