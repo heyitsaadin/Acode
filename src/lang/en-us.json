@@ -906,5 +906,6 @@
 	"reset activity": "Reset activity",
 	"reset activity warning": "This clears the time, lines, files and streaks tracked on this device.",
 	"activity reset": "Activity reset",
-	"logout confirm": "Are you sure you want to log out of your Acode account?"
+	"logout confirm": "Are you sure you want to log out of your Acode account?",
+	"best streak": "Best streak"
 }
