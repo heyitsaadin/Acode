@@ -332,7 +332,10 @@ export default function ProfileInclude({
 	async function signOut() {
 		const ok = await confirm(
 			t("logout", "Logout"),
-			t("logout confirm", "Are you sure you want to log out of your Acode account?"),
+			t(
+				"logout confirm",
+				"Are you sure you want to log out of your Acode account?",
+			),
 		);
 		if (!ok) return;
 		const success = onLogout ? await onLogout() : true;
