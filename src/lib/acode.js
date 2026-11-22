@@ -98,6 +98,10 @@ class Acode {
 	// Registered formatter implementations (populated by plugins)
 	#formatter = [];
 	#pluginWatchers = {};
+	/** @type {Map<string, {order: number, $el: HTMLElement}>} */
+	#headerButtons = new Map();
+	/** Set by main.js; called whenever the header button list changes. */
+	onHeaderButtonsChange = null;
 
 	/**
 	 * Clear a plugin's broken mark (so it can be retried)
@@ -438,6 +442,10 @@ class Acode {
 		this.define("themeBuilder", ThemeBuilder);
 		this.define("selectionMenu", selectionMenu);
 		this.define("sidebarApps", sidebarAppsModule);
+		this.define("headerButtons", {
+			add: (options) => this.addHeaderButton(options),
+			remove: (id) => this.removeHeaderButton(id),
+		});
 		this.define("terminal", terminalModule);
 		this.define("webview", webview);
 		this.define("orientation", orientation);
@@ -931,6 +939,55 @@ class Acode {
 
 	joinUrl(...args) {
 		return Url.join(...args);
+	}
+
+	/**
+	 * Add a button to the main editor header, next to the edit/run buttons.
+	 * Register an icon first with `acode.addIcon` and pass its class name.
+	 * @param {object} options
+	 * @param {string} options.id Unique id (re-adding the same id replaces it)
+	 * @param {string} [options.icon] Icon class name (`.icon.<icon>`)
+	 * @param {string} [options.label] Accessible label
+	 * @param {() => void} options.onclick Click handler
+	 * @param {number} [options.order=0] Lower values appear further left
+	 * @returns {() => void} Function that removes the button
+	 */
+	addHeaderButton({ id, icon, label, onclick, order = 0 } = {}) {
+		if (!id || typeof onclick !== "function") {
+			throw new Error("addHeaderButton requires an `id` and an `onclick`.");
+		}
+		this.removeHeaderButton(id);
+		const $el = (
+			<span
+				className={`icon ${icon || "extension"}`}
+				data-header-button={id}
+				aria-label={label || id}
+				style={{ fontSize: "1.2em" }}
+				onclick={onclick}
+			/>
+		);
+		this.#headerButtons.set(id, { order, $el });
+		this.onHeaderButtonsChange?.();
+		return () => this.removeHeaderButton(id);
+	}
+
+	/**
+	 * Remove a header button added with `addHeaderButton`
+	 * @param {string} id
+	 */
+	removeHeaderButton(id) {
+		const entry = this.#headerButtons.get(id);
+		if (!entry) return;
+		entry.$el.remove();
+		this.#headerButtons.delete(id);
+		this.onHeaderButtonsChange?.();
+	}
+
+	/** Header button elements, sorted by `order`. */
+	get headerButtons() {
+		return [...this.#headerButtons.values()]
+			.sort((a, b) => a.order - b.order)
+			.map(({ $el }) => $el);
 	}
 
 	/**
