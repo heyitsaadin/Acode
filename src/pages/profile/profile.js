@@ -506,17 +506,31 @@ export default function ProfileInclude({
 			);
 			return;
 		}
+		const $strip = <div className="pf-lang-strip"></div>;
 		for (const lang of list) {
-			const percent = Math.round(lang.share * 100);
+			$strip.append(
+				<span
+					className="pf-lang-seg"
+					style={{
+						flexGrow: String(Math.max(lang.share, 0.02)),
+						background: langColor(lang.name),
+					}}
+				></span>,
+			);
+		}
+		languages.$body.append($strip);
+
+		for (const lang of list) {
+			const percent = lang.share * 100;
+			const label = percent < 1 ? "<1%" : `${Math.round(percent)}%`;
 			languages.$body.append(
 				<div className="pf-lang">
-					<div className="pf-lang-head">
-						<span>{lang.name}</span>
-						<span className="pf-lang-percent">{`${percent}%`}</span>
-					</div>
-					<div className="pf-lang-bar">
-						<span style={{ width: `${Math.max(percent, 2)}%` }}></span>
-					</div>
+					<span
+						className="pf-lang-dot"
+						style={{ background: langColor(lang.name) }}
+					></span>
+					<span className="pf-lang-name">{lang.name}</span>
+					<span className="pf-lang-percent">{label}</span>
 				</div>,
 			);
 		}
