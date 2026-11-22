@@ -95,16 +95,40 @@ function create($container, $toggler) {
 	loginEvents.addListener(updateSidebarAvatar);
 	activity.init();
 
+	let openingProfile = false;
+
 	async function handleUserIconClick() {
-		let user = null;
-		try {
-			user = await auth.getLoggedInUser();
-		} catch (error) {
-			// offline or server error: still open the page as signed out
-			console.error("Error checking login status:", error);
-		}
+		// A second tap while the profile is still opening would stack two pages.
+		if (openingProfile) return;
+		openingProfile = true;
+
+		// Cached users resolve instantly, so only show a loader if the
+		// account check is actually slow.
+		let loaderShown = false;
+		const loaderTimer = setTimeout(() => {
+			loaderShown = true;
+			loader.create(strings["login"], strings["loading..."]);
+			loader.show();
+		}, 250);
+
+		const stopLoader = () => {
+			clearTimeout(loaderTimer);
+			if (loaderShown) {
+				loaderShown = false;
+				loader.destroy();
+			}
+		};
 
 		try {
+			let user = null;
+			try {
+				user = await auth.getLoggedInUser();
+			} catch (error) {
+				// offline or server error: still open the page as signed out
+				console.error("Error checking login status:", error);
+			}
+			stopLoader();
+
 			const { default: openProfile } = await import(
 				/* webpackChunkName: "profile" */ "pages/profile"
 			);
@@ -116,6 +140,9 @@ function create($container, $toggler) {
 			});
 		} catch (error) {
 			console.error("Error opening profile:", error);
+		} finally {
+			stopLoader();
+			openingProfile = false;
 		}
 	}
 
