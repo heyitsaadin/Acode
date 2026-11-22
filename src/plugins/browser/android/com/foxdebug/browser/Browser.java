@@ -911,6 +911,13 @@ public class Browser extends LinearLayout {
     if (width > 0 && height > 0) {
       updateViewportDimension(width, height);
     }
+
+    if (cursor && webView.getParent() != null) {
+      int shownWidth = width == 0
+        ? ((View) webView.getParent()).getWidth()
+        : width;
+      pushCursorSettings(shownWidth * scale);
+    }
   }
 
   private void styleIcon(ImageView view) {
