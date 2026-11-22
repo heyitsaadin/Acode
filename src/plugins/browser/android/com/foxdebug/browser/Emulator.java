@@ -23,6 +23,7 @@ public class Emulator extends LinearLayout {
   private View reference;
   private Context context;
   private Callback listener;
+  private Runnable hideListener;
   private Device customDevice;
   private Device selectedDevice;
   private boolean initialized = false;
