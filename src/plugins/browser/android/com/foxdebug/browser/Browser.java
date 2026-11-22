@@ -693,7 +693,16 @@ public class Browser extends LinearLayout {
    */
   public void applyCursor() {
     // The injected script lives in CursorScript (bottom of this file).
-    webView.evaluateJavascript(CursorScript.build(cursor, cursorSpeed), null);
+    webView.evaluateJavascript(
+      CursorScript.build(
+        cursor,
+        cursorSpeed,
+        cursorSize,
+        previewScreenWidth(),
+        CURSOR_BASE_DP * density()
+      ),
+      null
+    );
   }
 
   private void updateDefaultItems(boolean emulatorOn) {
