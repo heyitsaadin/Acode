@@ -1,6 +1,7 @@
 import fsOperation from "fileSystem";
 import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
+import activity from "lib/activity";
 import adRewards from "lib/adRewards";
 import config from "lib/config";
 import fileIcons from "lib/fileIcons";
