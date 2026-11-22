@@ -68,8 +68,6 @@ function formatDuration(ms) {
 	return `${hours}h ${rest}m`;
 }
 
-const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
-
 function tipText(day) {
 	const when = new Date(`${day.date}T00:00:00Z`).toLocaleDateString(undefined, {
 		month: "short",
