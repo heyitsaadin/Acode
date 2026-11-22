@@ -4,8 +4,8 @@ import Page from "components/page";
 import Sidebar from "components/sidebar";
 import toast from "components/toast";
 import confirm from "dialogs/confirm";
-import prompt from "dialogs/prompt";
 import actionStack from "lib/actionStack";
+import tracker from "lib/activity";
 import config from "lib/config";
 import { LOADED_PLUGINS } from "lib/loadPlugins";
 import openFile from "lib/openFile";
@@ -14,14 +14,7 @@ import recents from "lib/recents";
 import helpers from "utils/helpers";
 import Uri from "utils/Uri";
 import Url from "utils/Url";
-import {
-	buildWeeks,
-	cleanUsername,
-	fetchContributions,
-	getSavedUsername,
-	monthLabels,
-	saveUsername,
-} from "./github";
+import { buildWeeks, monthLabels } from "./heatmap";
 
 /* Feather-style stroke icons, so the page never depends on the icon font. */
 const ICONS = {
@@ -41,6 +34,8 @@ const ICONS = {
 		'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
 	login:
 		'<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>',
+	trash:
+		'<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>',
 	user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
 	chevron: '<polyline points="9 18 15 12 9 6"/>',
 	verified:
@@ -63,14 +58,32 @@ function formatMonthYear(value) {
 	});
 }
 
-function tipText({ count, date }) {
-	const when = new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, {
+function formatDuration(ms) {
+	const minutes = Math.round(ms / 60000);
+	if (minutes < 1) return ms > 0 ? "<1m" : "0m";
+	if (minutes < 60) return `${minutes}m`;
+	const hours = Math.floor(minutes / 60);
+	const rest = minutes % 60;
+	if (hours >= 100 || !rest) return `${hours}h`;
+	return `${hours}h ${rest}m`;
+}
+
+const plural = (count, word) => `${count} ${word}${count === 1 ? "" : "s"}`;
+
+function tipText(day) {
+	const when = new Date(`${day.date}T00:00:00Z`).toLocaleDateString(undefined, {
 		month: "short",
 		day: "numeric",
 		year: "numeric",
 		timeZone: "UTC",
 	});
-	return `${count} contribution${count === 1 ? "" : "s"} on ${when}`;
+	if (!day.ms && !day.lines && !day.files) return `No activity on ${when}`;
+	return [
+		when,
+		formatDuration(day.ms),
+		plural(day.lines, "line"),
+		plural(day.files, "file"),
+	].join(" · ");
 }
 
 /** Same path breakdown the "recent" picker uses. */
@@ -255,7 +268,6 @@ export default function ProfileInclude({
 	onLogout,
 } = {}) {
 	let user = initialUser;
-	let githubRun = 0;
 
 	const $page = Page("Profile");
 	$page.classList.add("profile-page");
@@ -276,8 +288,9 @@ export default function ProfileInclude({
 	};
 
 	const $heroSlot = <div className="pf-slot"></div>;
-	const $logoutSlot = <div className="pf-slot"></div>;
-	const github = section("GitHub");
+	const $footSlot = <div className="pf-slot"></div>;
+	const activity = section("Activity");
+	const languages = section("Top languages");
 
 	/* ---------- account ---------- */
 	async function signIn() {
@@ -301,6 +314,18 @@ export default function ProfileInclude({
 		refreshAccount();
 	}
 
+	async function resetActivity() {
+		const ok = await confirm(
+			"Reset activity",
+			"This clears the time, lines, files and streaks tracked on this device.",
+		);
+		if (!ok) return;
+		tracker.reset();
+		renderActivity();
+		renderLanguages();
+		toast("Activity reset");
+	}
+
 	function renderHero() {
 		$heroSlot.textContent = "";
 		$heroSlot.append(
@@ -308,72 +333,42 @@ export default function ProfileInclude({
 		);
 	}
 
-	function renderLogout() {
-		$logoutSlot.textContent = "";
-		if (!user) return;
+	function renderFoot() {
+		$footSlot.textContent = "";
 		const $card = <div className="pf-card"></div>;
 		$card.append(
 			row({
-				iconName: "logout",
-				title: strings.logout || "Logout",
-				danger: true,
+				iconName: "trash",
+				title: "Reset activity",
 				chevron: false,
-				onclick: signOut,
+				onclick: resetActivity,
 			}),
 		);
-		$logoutSlot.append($card);
+		if (user) {
+			$card.append(
+				row({
+					iconName: "logout",
+					title: strings.logout || "Logout",
+					danger: true,
+					chevron: false,
+					onclick: signOut,
+				}),
+			);
+		}
+		$footSlot.append($card);
 	}
 
 	function refreshAccount() {
 		renderHero();
-		renderLogout();
-		renderGithub();
+		renderFoot();
 	}
 
-	/* ---------- GitHub ---------- */
-	/** Username typed on this device wins, otherwise the one on the account. */
-	const githubName = () => getSavedUsername() || cleanUsername(user?.github);
+	/* ---------- activity ---------- */
+	activity.$trail.textContent = "Last 12 months";
 
-	async function editGithub() {
-		const input = await prompt("GitHub username", githubName(), "text");
-		if (input === null || input === undefined) return;
-		const raw = String(input).trim();
-		if (!raw) {
-			saveUsername("");
-		} else {
-			const name = cleanUsername(raw);
-			if (!name) {
-				toast("That doesn't look like a GitHub username");
-				return;
-			}
-			saveUsername(name);
-		}
-		renderGithub(true);
-	}
-
-	function githubMessage(text, ...buttons) {
-		const $actions = <div className="pf-actions"></div>;
-		for (const [label, handler, ghost] of buttons) {
-			$actions.append(
-				<button
-					type="button"
-					className={`pf-btn small${ghost ? " ghost" : ""}`}
-					onclick={handler}
-				>
-					{label}
-				</button>,
-			);
-		}
-		return (
-			<div className="pf-empty">
-				<div>{text}</div>
-				{$actions}
-			</div>
-		);
-	}
-
-	function drawGithub(data) {
-		const weeks = buildWeeks(data.days);
+	function renderActivity() {
+		const data = tracker.getSummary();
+		const weeks = buildWeeks(data.year);
 		const labels = monthLabels(weeks);
 		const $grid = <div className="pf-gh-grid"></div>;
 
@@ -406,18 +401,22 @@ export default function ProfileInclude({
 		}
 		$legend.append(<span>More</span>);
 
-		github.$body.textContent = "";
-		github.$body.append(
+		const { today, totals } = data;
+		const todayText = today.ms
+			? `Today ${formatDuration(today.ms)} · ${plural(today.lines, "line")}`
+			: "Nothing yet today";
+
+		activity.$body.textContent = "";
+		activity.$body.append(
 			<div className="pf-metrics">
-				{metric(data.total.toLocaleString(), "Contributions")}
-				{metric(`${data.current}d`, "Current streak")}
-				{metric(`${data.longest}d`, "Longest streak")}
+				{metric(formatDuration(totals.ms), "Coding time")}
+				{metric(totals.lines.toLocaleString(), "Lines")}
+				{metric(totals.files.toLocaleString(), "Files")}
+				{metric(`${data.current}d`, "Streak")}
 			</div>,
 			$scroll,
 			<div className="pf-gh-foot">
-				<span className="pf-link" onclick={editGithub}>
-					Change username
-				</span>
+				<span>{todayText}</span>
 				{$legend}
 			</div>,
 		);
@@ -426,50 +425,30 @@ export default function ProfileInclude({
 		setTimeout(() => {
 			$scroll.scrollLeft = $scroll.scrollWidth;
 		}, 50);
+
+		return data;
 	}
 
-	async function renderGithub(force = false) {
-		const run = ++githubRun;
-		const name = githubName();
-
-		github.$trail.textContent = "";
-		github.$body.textContent = "";
-
-		if (!name) {
-			github.$body.append(
-				githubMessage("Show your GitHub contributions here.", [
-					"Add username",
-					editGithub,
-				]),
+	function renderLanguages(list = tracker.getSummary().languages) {
+		languages.$body.textContent = "";
+		if (!list.length) {
+			languages.$body.append(
+				<div className="pf-empty">Languages show up here as you code.</div>,
 			);
 			return;
 		}
-
-		github.$trail.append(
-			<span
-				className="pf-link"
-				onclick={openUrl(`https://github.com/${name}`)}
-			>{`@${name}`}</span>,
-		);
-		github.$body.append(<div className="pf-empty">Loading contributions…</div>);
-
-		try {
-			const data = await fetchContributions(name, { force });
-			if (run !== githubRun) return;
-			drawGithub(data);
-		} catch (error) {
-			if (run !== githubRun) return;
-			github.$body.textContent = "";
-			const text =
-				error.message === "not-found"
-					? `Couldn't find @${name} on GitHub.`
-					: "Couldn't load contributions. Check your connection.";
-			github.$body.append(
-				githubMessage(
-					text,
-					["Retry", () => renderGithub(true)],
-					["Change username", editGithub, true],
-				),
+		for (const lang of list) {
+			const percent = Math.round(lang.share * 100);
+			languages.$body.append(
+				<div className="pf-lang">
+					<div className="pf-lang-head">
+						<span>{lang.name}</span>
+						<span className="pf-lang-percent">{`${percent}%`}</span>
+					</div>
+					<div className="pf-lang-bar">
+						<span style={{ width: `${Math.max(percent, 2)}%` }}></span>
+					</div>
+				</div>,
 			);
 		}
 	}
@@ -580,11 +559,12 @@ export default function ProfileInclude({
 
 	/* ---------- assemble ---------- */
 	const $main = <main id="profile-page" className="main scroll"></main>;
-	$main.append($heroSlot, github.$el);
+	$main.append($heroSlot, activity.$el, languages.$el);
 	if (recentFiles.length || recentFolders.length) $main.append(recent.$el);
-	$main.append(menu.$el, $logoutSlot);
+	$main.append(menu.$el, $footSlot);
 
 	refreshAccount();
+	renderLanguages(renderActivity().languages);
 	fillPlugins();
 
 	$page.body = $main;

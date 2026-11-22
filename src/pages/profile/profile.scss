@@ -4,7 +4,7 @@
   --pf-border: var(--border-color, rgba(255, 255, 255, 0.1));
   --pf-danger: var(--danger-color, #ff5c5c);
 
-  /* GitHub graph: one blue, five steps (works on light and dark themes) */
+  /* Activity graph: one blue, five steps (works on light and dark themes) */
   --pf-lv0: color-mix(in srgb, var(--primary-text-color) 9%, transparent);
   --pf-lv1: color-mix(in srgb, var(--pf-blue) 28%, transparent);
   --pf-lv2: color-mix(in srgb, var(--pf-blue) 50%, transparent);
@@ -170,6 +170,11 @@
     color: var(--pf-muted);
   }
 
+  .pf-section-trail {
+    font-size: 12px;
+    color: var(--pf-muted);
+  }
+
   .pf-card {
     display: flex;
     flex-direction: column;
@@ -178,7 +183,7 @@
     overflow: hidden;
   }
 
-  /* ---------- GitHub ---------- */
+  /* ---------- activity ---------- */
   .pf-metrics {
     display: flex;
     padding: 14px 8px 4px;
@@ -186,17 +191,20 @@
 
   .pf-metric {
     flex: 1;
+    min-width: 0;
     text-align: center;
 
     .pf-metric-value {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 600;
+      white-space: nowrap;
     }
 
     .pf-metric-label {
       margin-top: 2px;
-      font-size: 11.5px;
+      font-size: 11px;
       color: var(--pf-muted);
+      white-space: nowrap;
     }
   }
 
@@ -248,9 +256,10 @@
 
   .pf-gh-foot {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px 12px;
     padding: 0 14px 12px;
     font-size: 12px;
     color: var(--pf-muted);
@@ -263,6 +272,39 @@
 
     span:first-child { margin-right: 4px; }
     span:last-child { margin-left: 4px; }
+  }
+
+  /* ---------- languages ---------- */
+  .pf-lang {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--pf-border);
+
+    &:last-child { border-bottom: none; }
+
+    .pf-lang-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+
+    .pf-lang-percent { color: var(--pf-muted); }
+
+    .pf-lang-bar {
+      height: 6px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--pf-lv0);
+
+      span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--pf-lv4);
+      }
+    }
   }
 
   /* ---------- rows ---------- */
@@ -278,7 +320,6 @@
     &:active { background: var(--pf-lv0); }
 
     > .pf-icon { color: var(--pf-muted); }
-    > .pf-icon:last-child { color: var(--pf-muted); }
 
     .pf-row-text {
       flex: 1;
@@ -324,13 +365,6 @@
     color: var(--pf-muted);
   }
 
-  .pf-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-  }
-
   .pf-btn {
     display: inline-flex;
     align-items: center;
@@ -347,11 +381,6 @@
     background: var(--pf-blue);
 
     &.small { padding: 7px 16px; font-size: 13px; margin-top: 0; }
-    &.ghost {
-      color: var(--primary-text-color);
-      background: transparent;
-      border-color: var(--pf-border);
-    }
     &:active { filter: brightness(0.9); }
     &:disabled { opacity: 0.6; }
   }
