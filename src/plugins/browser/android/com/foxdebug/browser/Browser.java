@@ -1141,7 +1141,8 @@ class CursorScript {
       "return css;}",
       // block panning / text selection but keep pinch zoom
       "var st=document.createElement('style');",
-      "st.textContent='html,body,*{touch-action:pinch-zoom!important;-webkit-user-select:none!important;user-select:none!important;}'+hoverCss();",
+      // outline/tap-highlight off: clicking with the cursor focuses elements, which otherwise draws a yellow ring
+      "st.textContent='html,body,*{touch-action:pinch-zoom!important;-webkit-user-select:none!important;user-select:none!important;-webkit-tap-highlight-color:transparent!important;}*:focus,*:focus-visible,*:active{outline:none!important;}'+hoverCss();",
       "(document.head||root).appendChild(st);",
       "var c=document.createElement('div');",
       "c.style.cssText='position:fixed;left:0;top:0;width:24px;height:24px;pointer-events:none;z-index:2147483647;transform-origin:0 0;will-change:transform;';",
