@@ -467,7 +467,33 @@ export default function ProfileInclude({
 	}
 
 	/* ---------- activity ---------- */
-	activity.$trail.textContent = t("last 12 months", "Last 12 months");
+	const $share = <button type="button" className="pf-share"></button>;
+	$share.setAttribute("aria-label", t("share", "Share"));
+	$share.append(icon("share", 16));
+	activity.$trail.append(
+		<span>{t("last 12 months", "Last 12 months")}</span>,
+		$share,
+	);
+
+	let sharing = false;
+	$share.onclick = async () => {
+		if (sharing) return;
+		sharing = true;
+		try {
+			const blob = await renderShareCard($share, {
+				name: user?.name || t("activity", "Activity"),
+				data: tracker.getSummary(),
+				formatDuration,
+				label: t,
+			});
+			await shareImage(blob, "acode-activity.png");
+		} catch (error) {
+			console.error(error);
+			toast(t("share failed", "Could not share your activity"));
+		} finally {
+			sharing = false;
+		}
+	};
 
 	function renderActivity() {
 		const data = tracker.getSummary();
