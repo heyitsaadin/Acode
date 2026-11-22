@@ -235,7 +235,7 @@ function buildAvatar(user, getAvatarSrc) {
 		.toUpperCase();
 	const $img = <img className="pf-avatar-img" alt="" />;
 	const $avatar = (
-		<div className="pf-avatar">
+		<div className={user.acode_pro ? "pf-avatar pro" : "pf-avatar"}>
 			<span className="pf-avatar-initial">{initial}</span>
 			{$img}
 		</div>
