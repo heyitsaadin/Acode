@@ -1,10 +1,10 @@
 import "./style.scss";
 import fsOperation from "fileSystem";
 import toast from "components/toast";
-import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
+import activity from "lib/activity";
 import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
 import helpers from "utils/helpers";
