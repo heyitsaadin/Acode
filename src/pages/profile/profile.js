@@ -455,7 +455,12 @@ export default function ProfileInclude({
 
 	function renderActivity() {
 		const data = tracker.getSummary();
-		const weeks = buildWeeks(data.year);
+		// Signed out with nothing tracked yet: show a faded sample instead of
+		// a blank grid.
+		const isPlaceholder = !user && !data.totals.activeDays;
+		const weeks = buildWeeks(
+			isPlaceholder ? samplePattern(data.year) : data.year,
+		);
 		const labels = monthLabels(weeks);
 		const todayKey = data.year[data.year.length - 1].date;
 		const $grid = <div className="pf-gh-grid"></div>;
