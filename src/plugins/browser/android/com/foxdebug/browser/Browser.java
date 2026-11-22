@@ -1257,7 +1257,12 @@ class CursorScript {
       "if(vv){vv.addEventListener('resize',vp);vv.addEventListener('scroll',vp);}",
       // layout can change under a resting cursor (after a click, animations)
       "var iv=setInterval(function(){hover(false);},250);",
+      // hooks called from Java: native trackpad (area outside the page) and settings sliders
+      "window.__acodeCursorMove=function(dx,dy){var f=cfg.speed/K();nudge(dx*f,dy*f);hover(true);};",
+      "window.__acodeCursorClick=function(){clickAtCursor();};",
+      "window.__acodeCursorSet=function(sp,sz,sw,bs){cfg.speed=sp;cfg.size=sz;cfg.sw=sw;cfg.base=bs;draw();};",
       "window.__acodeCursorCleanup=function(){",
+      "window.__acodeCursorMove=null;window.__acodeCursorClick=null;window.__acodeCursorSet=null;",
       "clearInterval(iv);",
       "types.forEach(function(t){window.removeEventListener(t,block,o);});",
       "if(vv){vv.removeEventListener('resize',vp);vv.removeEventListener('scroll',vp);}",
