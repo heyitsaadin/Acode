@@ -707,7 +707,7 @@ export default function ProfileInclude({
 
 	/* ---------- assemble ---------- */
 	const $main = <main id="profile-page" className="main scroll"></main>;
-	$main.append($heroSlot, activity.$el, languages.$el);
+	$main.append($heroSlot, activity.$el, thisWeek.$el, languages.$el);
 	if (recentFiles.length || recentFolders.length) $main.append(recent.$el);
 	$main.append(menu.$el, $footSlot);
 
