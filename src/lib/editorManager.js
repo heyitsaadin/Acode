@@ -3869,6 +3869,7 @@ async function EditorManager($header, $body) {
 			}
 
 			file.markEdited();
+			activity.recordEdit(update, file);
 
 			// Debounced change handling (unsaved flag, cache, autosave)
 			const timers = getDocSyncTimers(file);
