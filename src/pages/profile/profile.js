@@ -437,29 +437,58 @@ export default function ProfileInclude({
 		const data = tracker.getSummary();
 		const weeks = buildWeeks(data.year);
 		const labels = monthLabels(weeks);
+		const todayKey = data.year[data.year.length - 1].date;
 		const $grid = <div className="pf-gh-grid"></div>;
 
 		weeks.forEach((week, i) => {
 			const $week = <div className="pf-gh-week"></div>;
 			$week.append(<div className="pf-gh-month">{labels[i] || ""}</div>);
 			for (const day of week) {
-				const $cell = (
-					<div
-						className={day ? `pf-gh-cell lv${day.level}` : "pf-gh-cell none"}
-					></div>
-				);
+				let cellClass = "pf-gh-cell none";
+				if (day) {
+					cellClass = `pf-gh-cell lv${day.level}`;
+					if (day.date === todayKey) cellClass += " today";
+				}
+				const $cell = <div className={cellClass}></div>;
 				if (day) $cell.dataset.tip = tipText(day);
 				$week.append($cell);
 			}
 			$grid.append($week);
 		});
 
+		// Tapping a day highlights it and shows its details.
+		let $selected = null;
 		$grid.onclick = (e) => {
-			const tip = e.target?.dataset?.tip;
-			if (tip) toast(tip);
+			const $cell = e.target;
+			const tip = $cell?.dataset?.tip;
+			if (!tip) return;
+			$selected?.classList.remove("selected");
+			$selected = $cell;
+			$cell.classList.add("selected");
+			toast(tip);
 		};
 
 		const $scroll = <div className="pf-gh-scroll">{$grid}</div>;
+
+		// Weekday labels (Mon/Wed/Fri) stay put while the grid scrolls.
+		const $days = <div className="pf-gh-days"></div>;
+		$days.append(<div className="pf-gh-spacer"></div>);
+		for (let row = 0; row < 7; row++) {
+			// 2024-01-07 was a Sunday, matching the Sunday-first grid.
+			const name =
+				row % 2 === 1
+					? new Date(2024, 0, 7 + row).toLocaleDateString(undefined, {
+							weekday: "short",
+						})
+					: "";
+			$days.append(<div className="pf-gh-daylabel">{name}</div>);
+		}
+		const $heat = (
+			<div className="pf-gh-wrap">
+				{$days}
+				{$scroll}
+			</div>
+		);
 
 		const $legend = <div className="pf-gh-legend"></div>;
 		$legend.append(<span>{t("less", "Less")}</span>);
