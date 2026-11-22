@@ -301,6 +301,7 @@ public class Browser extends LinearLayout {
                 menu.setChecked("Console", false);
                 menu.setVisible("Console", false);
                 addView(deviceEmulator);
+                onEmulatorShown();
                 fitWebViewTo(
                   deviceEmulator.getWidthProgress(),
                   deviceEmulator.getHeightProgress(),
