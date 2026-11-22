@@ -511,9 +511,7 @@ export default function ProfileInclude({
 			$days.append(<div className="pf-gh-daylabel">{name}</div>);
 		}
 		const $heat = (
-			<div
-				className={isPlaceholder ? "pf-gh-wrap placeholder" : "pf-gh-wrap"}
-			>
+			<div className={isPlaceholder ? "pf-gh-wrap placeholder" : "pf-gh-wrap"}>
 				{$days}
 				{$scroll}
 			</div>
