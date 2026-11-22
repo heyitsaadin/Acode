@@ -37,6 +37,10 @@ public class Ui {
     // cursor arrow is drawn directly with a Canvas instead.
     public static final String CURSOR = "\uF8FF";
 
+    // Also not a glyph in icon.ttf: drawn with a Canvas in get() (eye with a
+    // slash, like a "hide password" icon).
+    public static final String VISIBILITY_OFF = "\uF8FE";
+
     private static Paint paint;
     private static int size = 24;
     private static int color = Color.parseColor("#FFFFFF");
@@ -50,6 +54,10 @@ public class Ui {
     ) {
       if (CURSOR.equals(code)) {
         return drawCursor(color);
+      }
+
+      if (VISIBILITY_OFF.equals(code)) {
+        return drawEyeOff(color);
       }
 
       if (paint == null) {
@@ -75,6 +83,28 @@ public class Ui {
       Canvas canvas = new Canvas(bitmap);
 
       canvas.drawText(code, width / 2, baseline, paint);
+      return bitmap;
+    }
+
+    /** Draws an eye with a slash through it (like a "hide password" icon). */
+    private static Bitmap drawEyeOff(int color) {
+      int px = 96;
+      Bitmap bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+      Canvas canvas = new Canvas(bitmap);
+      Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+      p.setColor(color);
+      p.setStyle(Paint.Style.STROKE);
+      p.setStrokeWidth(7f);
+      p.setStrokeCap(Paint.Cap.ROUND);
+      p.setStrokeJoin(Paint.Join.ROUND);
+
+      Path eye = new Path();
+      eye.moveTo(8f, 48f);
+      eye.quadTo(48f, 4f, 88f, 48f);
+      eye.quadTo(48f, 92f, 8f, 48f);
+      canvas.drawPath(eye, p);
+      canvas.drawCircle(48f, 48f, 14f, p);
+      canvas.drawLine(18f, 14f, 78f, 82f, p);
       return bitmap;
     }
 

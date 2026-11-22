@@ -3,6 +3,7 @@ package com.foxdebug.browser;
 import android.content.Context;
 import android.graphics.Typeface;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.ImageView;
@@ -22,6 +23,7 @@ public class Emulator extends LinearLayout {
   private View reference;
   private Context context;
   private Callback listener;
+  private Runnable hideListener;
   private Device customDevice;
   private Device selectedDevice;
   private boolean initialized = false;
@@ -115,9 +117,64 @@ public class Emulator extends LinearLayout {
     addControl("width", 50, "Width");
     addControl("height", 50, "Height");
     addControl("scale", 50, "Scale");
+    // Thin tappable handle on top of the panel that hides the whole panel.
+    LinearLayout handle = new LinearLayout(context);
+    handle.setOrientation(LinearLayout.HORIZONTAL);
+    handle.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+    handle.setPadding(
+      Ui.dpToPixels(context, 12),
+      0,
+      Ui.dpToPixels(context, 12),
+      0
+    );
+    handle.setBackgroundColor(theme.get("primaryColor"));
+    handle.setClickable(true);
+
+    ImageView hideIcon = new ImageView(context);
+    hideIcon.setImageBitmap(
+      Ui.Icons.get(context, Ui.Icons.VISIBILITY_OFF, theme.get("primaryTextColor"))
+    );
+    hideIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+    hideIcon.setLayoutParams(
+      new LinearLayout.LayoutParams(
+        Ui.dpToPixels(context, 18),
+        Ui.dpToPixels(context, 18)
+      )
+    );
+
+    TextView hideLabel = new TextView(context);
+    hideLabel.setText("Hide controls");
+    hideLabel.setTextSize(12);
+    hideLabel.setTextColor(theme.get("primaryTextColor"));
+    hideLabel.setPadding(Ui.dpToPixels(context, 8), 0, 0, 0);
+
+    handle.addView(hideIcon);
+    handle.addView(hideLabel);
+    handle.setLayoutParams(
+      new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        Ui.dpToPixels(context, 28)
+      )
+    );
+    handle.setOnClickListener(
+      new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          if (hideListener != null) {
+            hideListener.run();
+          }
+        }
+      }
+    );
+
+    addView(handle);
     addView(border);
     addView(main);
     setOrientation(LinearLayout.VERTICAL);
+  }
+
+  public void setHideListener(Runnable listener) {
+    this.hideListener = listener;
   }
 
   public void setChangeListener(Callback listener) {
