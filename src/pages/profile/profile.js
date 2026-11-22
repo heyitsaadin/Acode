@@ -42,6 +42,22 @@ const ICONS = {
 		'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
 };
 
+/**
+ * Translated string with an English fallback, so a key that has not been
+ * added to a language file yet still shows readable text.
+ * `{name}` placeholders are filled from `vars`.
+ * @param {string} key
+ * @param {string} fallback
+ * @param {Record<string, string|number>} [vars]
+ */
+function t(key, fallback, vars = {}) {
+	let text = strings[key] || fallback;
+	for (const [name, value] of Object.entries(vars)) {
+		text = text.replaceAll(`{${name}}`, String(value));
+	}
+	return text;
+}
+
 function icon(name, size = 20) {
 	const el = document.createElement("span");
 	el.className = "pf-icon";
@@ -75,7 +91,9 @@ function tipText(day) {
 		year: "numeric",
 		timeZone: "UTC",
 	});
-	if (!day.level) return `No activity on ${when}`;
+	if (!day.level) {
+		return t("no activity on", "No activity on {date}", { date: when });
+	}
 	return `${when} · ${formatDuration(day.ms)}`;
 }
 
@@ -134,7 +152,16 @@ function row({
 			{$text}
 		</div>
 	);
-	if (value) $row.append(value);
+	if (value) {
+		// Plain strings get the same muted style as element values.
+		$row.append(
+			typeof value === "string" ? (
+				<span className="pf-row-value">{value}</span>
+			) : (
+				value
+			),
+		);
+	}
 	if (chevron) $row.append(icon("chevron", 18));
 	return $row;
 }
@@ -178,7 +205,7 @@ function buildUserHero(user, getAvatarSrc) {
 		</div>
 	);
 	if (user.verified) {
-		const $v = <span className="pf-verified" title="Verified"></span>;
+		const $v = <span className="pf-verified"></span>;
 		$v.append(icon("verified", 16));
 		$nameRow.append($v);
 	}
@@ -192,7 +219,9 @@ function buildUserHero(user, getAvatarSrc) {
 	const $meta = <div className="pf-meta"></div>;
 	const since = formatMonthYear(user.created_at);
 	if (since) {
-		$meta.append(<span>{`Member since ${since}`}</span>);
+		$meta.append(
+			<span>{t("member since", "Member since {date}", { date: since })}</span>,
+		);
 	}
 	if (user.website) {
 		const site = String(user.website);
@@ -219,18 +248,19 @@ function buildUserHero(user, getAvatarSrc) {
 
 /** Header shown when nobody is logged in, with a sign in button. */
 function buildGuestHero(onSignIn) {
-	const $label = <span>Sign in</span>;
+	const signInText = t("login", "Login");
+	const $label = <span>{signInText}</span>;
 	const $btn = <button type="button" className="pf-btn small"></button>;
 	$btn.append(icon("login", 16), $label);
 	$btn.onclick = async () => {
 		if ($btn.disabled) return;
 		$btn.disabled = true;
-		$label.textContent = "Waiting for sign in…";
+		$label.textContent = t("loading...", "Loading...");
 		try {
 			await onSignIn();
 		} finally {
 			$btn.disabled = false;
-			$label.textContent = "Sign in";
+			$label.textContent = signInText;
 		}
 	};
 
@@ -238,8 +268,12 @@ function buildGuestHero(onSignIn) {
 		<div className="pf-hero">
 			<div className="pf-avatar guest">{icon("user", 30)}</div>
 			<div className="pf-hero-text">
-				<h2 className="pf-name">Not signed in</h2>
-				<div className="pf-email">Sign in with your Acode account.</div>
+				<h2 className="pf-name">
+					{t("profile not signed in", "Not signed in")}
+				</h2>
+				<div className="pf-email">
+					{t("profile sign in prompt", "Sign in with your Acode account.")}
+				</div>
 				{$btn}
 			</div>
 		</div>
@@ -262,7 +296,7 @@ export default function ProfileInclude({
 } = {}) {
 	let user = initialUser;
 
-	const $page = Page("Profile");
+	const $page = Page(t("my profile", "My profile"));
 	$page.classList.add("profile-page");
 
 	const close = () => {
@@ -282,8 +316,8 @@ export default function ProfileInclude({
 
 	const $heroSlot = <div className="pf-slot"></div>;
 	const $footSlot = <div className="pf-slot"></div>;
-	const activity = section("Activity");
-	const languages = section("Top languages");
+	const activity = section(t("activity", "Activity"));
+	const languages = section(t("top languages", "Top languages"));
 
 	/* ---------- account ---------- */
 	async function signIn() {
@@ -297,8 +331,8 @@ export default function ProfileInclude({
 
 	async function signOut() {
 		const ok = await confirm(
-			strings.logout || "Logout",
-			"Are you sure you want to log out of your Acode account?",
+			t("logout", "Logout"),
+			t("logout confirm", "Are you sure you want to log out of your Acode account?"),
 		);
 		if (!ok) return;
 		const success = onLogout ? await onLogout() : true;
@@ -309,14 +343,17 @@ export default function ProfileInclude({
 
 	async function resetActivity() {
 		const ok = await confirm(
-			"Reset activity",
-			"This clears the time, lines, files and streaks tracked on this device.",
+			t("reset activity", "Reset activity"),
+			t(
+				"reset activity warning",
+				"This clears the time, lines, files and streaks tracked on this device.",
+			),
 		);
 		if (!ok) return;
 		tracker.reset();
 		renderActivity();
 		renderLanguages();
-		toast("Activity reset");
+		toast(t("activity reset", "Activity reset"));
 	}
 
 	function renderHero() {
@@ -332,7 +369,7 @@ export default function ProfileInclude({
 		$card.append(
 			row({
 				iconName: "trash",
-				title: "Reset activity",
+				title: t("reset activity", "Reset activity"),
 				chevron: false,
 				onclick: resetActivity,
 			}),
@@ -341,7 +378,7 @@ export default function ProfileInclude({
 			$card.append(
 				row({
 					iconName: "logout",
-					title: strings.logout || "Logout",
+					title: t("logout", "Logout"),
 					danger: true,
 					chevron: false,
 					onclick: signOut,
@@ -357,7 +394,7 @@ export default function ProfileInclude({
 	}
 
 	/* ---------- activity ---------- */
-	activity.$trail.textContent = "Last 12 months";
+	activity.$trail.textContent = t("last 12 months", "Last 12 months");
 
 	function renderActivity() {
 		const data = tracker.getSummary();
@@ -388,23 +425,23 @@ export default function ProfileInclude({
 		const $scroll = <div className="pf-gh-scroll">{$grid}</div>;
 
 		const $legend = <div className="pf-gh-legend"></div>;
-		$legend.append(<span>Less</span>);
+		$legend.append(<span>{t("less", "Less")}</span>);
 		for (let n = 0; n <= 4; n++) {
 			$legend.append(<span className={`pf-gh-cell lv${n}`}></span>);
 		}
-		$legend.append(<span>More</span>);
+		$legend.append(<span>{t("more", "More")}</span>);
 
 		const { today, totals } = data;
 		const todayText = today.ms
-			? `Today ${formatDuration(today.ms)}`
-			: "Nothing yet today";
+			? t("today time", "Today {time}", { time: formatDuration(today.ms) })
+			: t("nothing yet today", "Nothing yet today");
 
 		activity.$body.textContent = "";
 		activity.$body.append(
 			<div className="pf-metrics">
-				{metric(formatDuration(totals.ms), "Coding time")}
-				{metric(`${data.current}d`, "Streak")}
-				{metric(String(totals.activeDays), "Active days")}
+				{metric(formatDuration(totals.ms), t("coding time", "Coding time"))}
+				{metric(`${data.current}d`, t("streak", "Streak"))}
+				{metric(String(totals.activeDays), t("active days", "Active days"))}
 			</div>,
 			$scroll,
 			<div className="pf-gh-foot">
@@ -425,7 +462,9 @@ export default function ProfileInclude({
 		languages.$body.textContent = "";
 		if (!list.length) {
 			languages.$body.append(
-				<div className="pf-empty">Languages show up here as you code.</div>,
+				<div className="pf-empty">
+					{t("languages empty", "Languages show up here as you code.")}
+				</div>,
 			);
 			return;
 		}
@@ -446,7 +485,7 @@ export default function ProfileInclude({
 	}
 
 	/* ---------- recents ---------- */
-	const recent = section("Recent");
+	const recent = section(t("recently used", "Recently used"));
 	const recentFiles = recents.files.filter(Boolean).slice(0, 4);
 	const recentFolders = recents.folders.filter((f) => f?.url).slice(0, 2);
 
@@ -484,11 +523,11 @@ export default function ProfileInclude({
 	// Plugins page, which starts on its "Installed" tab.
 	const $pluginCount = <span className="pf-row-value">–</span>;
 
-	const menu = section("More");
+	const menu = section(t("more", "More"));
 	const menuRows = [
 		{
 			iconName: "package",
-			title: "Downloaded plugins",
+			title: t("plugins", "Plugins"),
 			value: $pluginCount,
 			onclick: goto(async () =>
 				(
@@ -498,7 +537,7 @@ export default function ProfileInclude({
 		},
 		{
 			iconName: "sliders",
-			title: "Settings",
+			title: t("settings", "Settings"),
 			onclick: goto(async () =>
 				(
 					await import(
@@ -509,7 +548,7 @@ export default function ProfileInclude({
 		},
 		{
 			iconName: "contrast",
-			title: "App theme",
+			title: t("app theme", "App theme"),
 			onclick: goto(async () =>
 				(
 					await import(
@@ -520,18 +559,18 @@ export default function ProfileInclude({
 		},
 		{
 			iconName: "folder",
-			title: "Open folder",
+			title: t("open folder", "Open folder"),
 			onclick: goto(() => acode.exec("open-folder")),
 		},
 		{
 			iconName: "external",
-			title: "Acode account",
+			title: t("acode account", "Acode account"),
 			value: String(config.BASE_URL || "").replace(/^https?:\/\//, ""),
 			onclick: openUrl(config.BASE_URL),
 		},
 		{
 			iconName: "info",
-			title: "About",
+			title: t("about", "About"),
 			value: window.BuildInfo?.version || "",
 			onclick: goto(async () =>
 				(await import(/* webpackChunkName: "about" */ "pages/about")).default(),
