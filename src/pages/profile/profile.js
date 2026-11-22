@@ -472,7 +472,7 @@ export default function ProfileInclude({
 				let cellClass = "pf-gh-cell none";
 				if (day) {
 					cellClass = `pf-gh-cell lv${day.level}`;
-					if (day.date === todayKey) cellClass += " today";
+					if (day.date === todayKey && !isPlaceholder) cellClass += " today";
 				}
 				const $cell = <div className={cellClass}></div>;
 				if (day) $cell.dataset.tip = tipText(day);
