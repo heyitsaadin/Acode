@@ -403,9 +403,8 @@ export default function ProfileInclude({
 		activity.$body.append(
 			<div className="pf-metrics">
 				{metric(formatDuration(totals.ms), "Coding time")}
-				{metric(totals.lines.toLocaleString(), "Lines")}
-				{metric(totals.files.toLocaleString(), "Files")}
 				{metric(`${data.current}d`, "Streak")}
+				{metric(String(totals.activeDays), "Active days")}
 			</div>,
 			$scroll,
 			<div className="pf-gh-foot">
