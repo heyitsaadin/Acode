@@ -1,6 +1,7 @@
 import fsOperation from "fileSystem";
 import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
+import activity from "lib/activity";
 import adRewards from "lib/adRewards";
 import config from "lib/config";
 import fileIcons from "lib/fileIcons";
@@ -462,6 +463,8 @@ export default {
 				expectedType === "file"
 					? await fsOperation(baseUri).createFile(name)
 					: await fsOperation(baseUri).createDirectory(name);
+
+			if (expectedType === "file") activity.recordFileCreated();
 
 			return {
 				url: createdUrl || targetUri,
