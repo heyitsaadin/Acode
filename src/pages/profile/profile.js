@@ -396,7 +396,7 @@ export default function ProfileInclude({
 
 		const { today, totals } = data;
 		const todayText = today.ms
-			? `Today ${formatDuration(today.ms)} · ${plural(today.lines, "line")}`
+			? `Today ${formatDuration(today.ms)}`
 			: "Nothing yet today";
 
 		activity.$body.textContent = "";
