@@ -98,6 +98,10 @@ class Acode {
 	// Registered formatter implementations (populated by plugins)
 	#formatter = [];
 	#pluginWatchers = {};
+	/** @type {Map<string, {order: number, $el: HTMLElement}>} */
+	#headerButtons = new Map();
+	/** Set by main.js; called whenever the header button list changes. */
+	onHeaderButtonsChange = null;
 
 	/**
 	 * Clear a plugin's broken mark (so it can be retried)
