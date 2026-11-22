@@ -127,6 +127,7 @@ public class Browser extends LinearLayout {
     this.imageSize = Ui.dpToPixels(context, 35);
     this.titleHeight = Ui.dpToPixels(context, 45);
     this.titleTextHeight = Ui.dpToPixels(context, 35);
+    loadCursorPrefs();
 
     this.init();
   }
