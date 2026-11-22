@@ -522,7 +522,43 @@ export default function ProfileInclude({
 			$scroll.scrollLeft = $scroll.scrollWidth;
 		}, 50);
 
+		renderWeek(data);
 		return data;
+	}
+
+	/* ---------- this week (last 7 days) ---------- */
+	const thisWeek = section(t("this week", "This week"));
+
+	function renderWeek(data) {
+		const days = data.year.slice(-7);
+		const max = Math.max(...days.map((day) => day.ms), 1);
+		const total = days.reduce((sum, day) => sum + day.ms, 0);
+		thisWeek.$trail.textContent = total ? formatDuration(total) : "";
+
+		const $chart = <div className="pf-week"></div>;
+		days.forEach((day, i) => {
+			const isToday = i === days.length - 1;
+			const percent = day.ms
+				? Math.max(8, Math.round((day.ms / max) * 100))
+				: 0;
+			const barClass = ["pf-week-bar", !day.ms && "empty", isToday && "today"]
+				.filter(Boolean)
+				.join(" ");
+			const name = new Date(`${day.date}T00:00:00Z`).toLocaleDateString(
+				undefined,
+				{ weekday: "short", timeZone: "UTC" },
+			);
+			$chart.append(
+				<div className="pf-week-col" onclick={() => toast(tipText(day))}>
+					<div className="pf-week-area">
+						<span className={barClass} style={{ height: `${percent}%` }}></span>
+					</div>
+					<span className={`pf-week-day${isToday ? " today" : ""}`}>{name}</span>
+				</div>,
+			);
+		});
+		thisWeek.$body.textContent = "";
+		thisWeek.$body.append($chart);
 	}
 
 	function renderLanguages(list = tracker.getSummary().languages) {
