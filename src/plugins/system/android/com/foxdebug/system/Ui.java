@@ -37,6 +37,10 @@ public class Ui {
     // cursor arrow is drawn directly with a Canvas instead.
     public static final String CURSOR = "\uF8FF";
 
+    // Also not a glyph in icon.ttf: drawn with a Canvas in get() (eye with a
+    // slash, like a "hide password" icon).
+    public static final String VISIBILITY_OFF = "\uF8FE";
+
     private static Paint paint;
     private static int size = 24;
     private static int color = Color.parseColor("#FFFFFF");
