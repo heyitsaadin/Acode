@@ -118,6 +118,26 @@ function formatDuration(ms) {
 	return `${hours}h ${rest}m`;
 }
 
+/**
+ * Deterministic sample activity shaped like a real year (quieter weekends,
+ * a few busy streaks). Only used as a faded preview, never as real data.
+ */
+function samplePattern(year) {
+	return year.map((day, i) => {
+		const weekday = new Date(`${day.date}T00:00:00Z`).getUTCDay();
+		const wave = (Math.sin(i / 9) + Math.sin(i / 23 + 1) + 2) / 4;
+		const noise = ((i * 7919) % 13) / 13;
+		const score =
+			wave + noise * 0.5 - (weekday === 0 || weekday === 6 ? 0.35 : 0);
+		let level = 4;
+		if (score < 0.45) level = 0;
+		else if (score < 0.7) level = 1;
+		else if (score < 0.9) level = 2;
+		else if (score < 1.05) level = 3;
+		return { date: day.date, ms: 0, level };
+	});
+}
+
 function tipText(day) {
 	const when = new Date(`${day.date}T00:00:00Z`).toLocaleDateString(undefined, {
 		month: "short",
