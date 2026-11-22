@@ -171,6 +171,17 @@ function pathDetails(url) {
 
 const openUrl = (url) => () => system.openInBrowser(url);
 
+/** Saves the image to the cache folder and opens the system share sheet. */
+async function shareImage(blob, name) {
+	const buffer = await blob.arrayBuffer();
+	const url = Url.join(CACHE_STORAGE, name);
+	if (await fsOperation(url).exists()) await fsOperation(url).delete();
+	await fsOperation(CACHE_STORAGE).createFile(name, buffer);
+	const { url: shareUrl } = await fsOperation(url).stat();
+	const onFail = () => toast(strings["no app found to handle this file"]);
+	system.fileAction(shareUrl, name, "SEND", "image/png", onFail);
+}
+
 function section(title) {
 	const $trail = <span className="pf-section-trail"></span>;
 	const $body = <div className="pf-card"></div>;
