@@ -58,6 +58,40 @@ function t(key, fallback, vars = {}) {
 	return text;
 }
 
+/* Familiar colors for common languages; anything else gets a stable hue. */
+const LANG_COLORS = {
+	javascript: "#f1e05a",
+	jsx: "#f1e05a",
+	typescript: "#3178c6",
+	tsx: "#3178c6",
+	html: "#e34c26",
+	css: "#7b5bb6",
+	scss: "#c6538c",
+	json: "#8f9aa5",
+	markdown: "#519aba",
+	python: "#3572a5",
+	java: "#b07219",
+	kotlin: "#a97bff",
+	php: "#4f5d95",
+	go: "#00add8",
+	rust: "#dea584",
+	ruby: "#cc342d",
+	yaml: "#cb171e",
+	xml: "#0060ac",
+	sql: "#e38c00",
+	dart: "#00b4ab",
+	swift: "#f05138",
+	lua: "#4a5bd1",
+};
+
+function langColor(name) {
+	const key = String(name).toLowerCase();
+	if (LANG_COLORS[key]) return LANG_COLORS[key];
+	let hue = 0;
+	for (const ch of key) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
+	return `hsl(${hue} 55% 55%)`;
+}
+
 function icon(name, size = 20) {
 	const el = document.createElement("span");
 	el.className = "pf-icon";
