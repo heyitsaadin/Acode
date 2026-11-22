@@ -510,6 +510,9 @@
     font-weight: 600;
     color: #fff;
     background: var(--pf-blue);
+    transition:
+      transform 0.12s ease,
+      filter 0.12s ease;
 
     &.small { padding: 7px 16px; font-size: 13px; margin-top: 0; }
     &:active { filter: brightness(0.9); }
