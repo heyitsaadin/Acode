@@ -553,7 +553,9 @@ export default function ProfileInclude({
 					<div className="pf-week-area">
 						<span className={barClass} style={{ height: `${percent}%` }}></span>
 					</div>
-					<span className={`pf-week-day${isToday ? " today" : ""}`}>{name}</span>
+					<span className={`pf-week-day${isToday ? " today" : ""}`}>
+						{name}
+					</span>
 				</div>,
 			);
 		});
