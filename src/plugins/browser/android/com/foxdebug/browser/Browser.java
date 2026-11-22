@@ -253,6 +253,7 @@ public class Browser extends LinearLayout {
     );
     webViewContainer.setBackgroundColor(theme.get("primaryColor"));
     webViewContainer.addView(webView);
+    installTrackpad(webViewContainer);
 
     setOrientation(LinearLayout.VERTICAL);
     setFocusableInTouchMode(true);
