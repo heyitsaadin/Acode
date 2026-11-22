@@ -1277,7 +1277,18 @@ class CursorScript {
     for (String line : js) {
       sb.append(line).append('\n');
     }
-    sb.append('(').append(on).append(',').append(speed).append(");");
+    sb
+      .append('(')
+      .append(on)
+      .append(',')
+      .append(speed)
+      .append(',')
+      .append(size)
+      .append(',')
+      .append(screenW)
+      .append(',')
+      .append(basePx)
+      .append(");");
     return sb.toString();
   }
 }
