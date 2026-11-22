@@ -1117,6 +1117,8 @@ class CursorScript {
       "var NS='http://www.w3.org/2000/svg';",
       "var HV='__acode_hv';",
       "var cur='',hot=[0,0],hv=null,gesture=false;",
+      // live config: speed, size multiplier, on-screen px width of the page, base cursor px
+      "var cfg={speed:SPEED,size:SIZE,sw:SW,base:BASE};",
       "var t0=0,sx=0,sy=0,lx=0,ly=0,moved=false,active=false;",
       // visible area, so the cursor also behaves while pinch-zoomed
       "function bounds(){var v=window.visualViewport;",
