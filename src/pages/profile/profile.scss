@@ -437,6 +437,9 @@
     display: flex;
     align-items: center;
     gap: 14px;
+    transition:
+      transform 0.12s ease,
+      background 0.12s ease;
     padding: 14px;
     border-bottom: 1px solid var(--pf-border);
     color: var(--primary-text-color);
