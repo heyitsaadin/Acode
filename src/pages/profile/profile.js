@@ -478,6 +478,7 @@ export default function ProfileInclude({
 			<div className="pf-metrics">
 				{metric(formatDuration(totals.ms), t("coding time", "Coding time"))}
 				{metric(`${data.current}d`, t("streak", "Streak"))}
+				{metric(`${data.longest}d`, t("best streak", "Best streak"))}
 				{metric(String(totals.activeDays), t("active days", "Active days"))}
 			</div>,
 			$scroll,
