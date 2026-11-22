@@ -66,18 +66,6 @@ function create($container, $toggler) {
 				onmousedown={onresize}
 				ontouchstart={onresize}
 			></div>
-
-			<div ref={userContextMenu} className="user-menu">
-				<div className="user-menu-header">
-					<div className="user-menu-name"></div>
-					<div className="user-menu-email"></div>
-				</div>
-				{/* <div className="user-menu-separator"></div> */}
-				<div className="user-menu-item" onclick={handleLogout}>
-					<span className="icon logout"></span>
-					{strings.logout}
-				</div>
-			</div>
 		</div>
 	);
 	const mask = <span className="mask" onclick={hide}></span>;
