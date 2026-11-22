@@ -539,7 +539,14 @@ export default function ProfileInclude({
 			</div>,
 			$heat,
 			<div className="pf-gh-foot">
-				<span>{todayText}</span>
+				<span>
+					{isPlaceholder
+						? t(
+								"activity placeholder hint",
+								"Sign in and start coding to fill this in",
+							)
+						: todayText}
+				</span>
 				{$legend}
 			</div>,
 		);
