@@ -2,8 +2,9 @@
  * Local coding activity for the profile page.
  *
  * Everything is stored on this device only (localStorage), one small record
- * per day: time spent coding, lines written, files created and time per
- * language. Nothing is sent anywhere.
+ * per day: time spent coding, lines written, files created and time spent
+ * typing in each language. Lines and files only influence how bright a day
+ * looks. Nothing is sent anywhere.
  */
 import { getMode, getModeForPath } from "cm/modelist";
 
@@ -21,6 +22,8 @@ let days = {};
 let started = false;
 let lastInput = 0;
 let lastTick = 0;
+let lastEditAt = 0;
+let lastEditLanguage = "";
 let saveTimer = null;
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -35,7 +38,7 @@ function normalizeDay(day) {
 		ms: Number(day?.ms) || 0,
 		lines: Number(day?.lines) || 0,
 		files: Number(day?.files) || 0,
-		langs: day?.langs && typeof day.langs === "object" ? day.langs : {},
+		code: day?.code && typeof day.code === "object" ? day.code : {},
 	};
 }
 
@@ -78,12 +81,6 @@ function languageOf(file) {
 	return mode.caption || mode.name;
 }
 
-function activeLanguage() {
-	const file = window.editorManager?.activeFile;
-	if (!file || file.type !== "editor") return "";
-	return languageOf(file);
-}
-
 function tick() {
 	const now = Date.now();
 	const elapsed = Math.min(now - lastTick, TICK_MS * 2);
@@ -94,8 +91,11 @@ function tick() {
 
 	const day = today();
 	day.ms += elapsed;
-	const language = activeLanguage();
-	if (language) day.langs[language] = (day.langs[language] || 0) + elapsed;
+	// A language only gets credit while you are typing in it, so opening or
+	// scrolling a file doesn't count.
+	if (lastEditLanguage && now - lastEditAt <= IDLE_MS) {
+		day.code[lastEditLanguage] = (day.code[lastEditLanguage] || 0) + elapsed;
+	}
 	scheduleSave();
 }
 
@@ -124,21 +124,32 @@ function init() {
 }
 
 /**
- * Count lines the person typed. Called from the editor's update listener.
- * Pastes, drops, undo/redo and formatters are ignored.
+ * Called from the editor's update listener. Typing and deleting credit the
+ * file's language; typed lines add to the day's score. Pastes, drops,
+ * undo/redo and formatters never count as lines.
  * @param {import("@codemirror/view").ViewUpdate} update
+ * @param {object} [file] the EditorFile being edited
  */
-function recordEdit(update) {
+function recordEdit(update, file) {
 	if (!started) return;
-	lastInput = Date.now();
+	const now = Date.now();
+	lastInput = now;
 
 	let lines = 0;
+	let typed = false;
 	for (const tr of update.transactions) {
-		if (!tr.docChanged || !tr.isUserEvent("input")) continue;
+		if (!tr.docChanged) continue;
+		if (!tr.isUserEvent("input") && !tr.isUserEvent("delete")) continue;
+		typed = true;
 		if (tr.isUserEvent("input.paste") || tr.isUserEvent("input.drop")) continue;
 		tr.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
 			lines += Math.max(0, inserted.lines - 1);
 		});
+	}
+
+	if (typed) {
+		lastEditAt = now;
+		lastEditLanguage = file ? languageOf(file) : "";
 	}
 
 	if (!lines) return;
@@ -217,7 +228,7 @@ function getSummary() {
 		} else {
 			run = 0;
 		}
-		for (const [name, ms] of Object.entries(days[day.date]?.langs || {})) {
+		for (const [name, ms] of Object.entries(days[day.date]?.code || {})) {
 			languageMs[name] = (languageMs[name] || 0) + ms;
 		}
 	}
