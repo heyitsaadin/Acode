@@ -277,36 +277,46 @@
   }
 
   /* ---------- languages ---------- */
+  .pf-lang-strip {
+    display: flex;
+    gap: 2px;
+    height: 8px;
+    margin: 14px 14px 6px;
+    border-radius: 999px;
+    overflow: hidden;
+
+    .pf-lang-seg {
+      flex: 1 1 0;
+      min-width: 4px;
+    }
+  }
+
   .pf-lang {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 14px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--pf-border);
+    font-size: 14px;
 
     &:last-child { border-bottom: none; }
 
-    .pf-lang-head {
-      display: flex;
-      justify-content: space-between;
-      font-size: 14px;
+    .pf-lang-dot {
+      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .pf-lang-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .pf-lang-percent { color: var(--pf-muted); }
-
-    .pf-lang-bar {
-      height: 6px;
-      border-radius: 999px;
-      overflow: hidden;
-      background: var(--pf-lv0);
-
-      span {
-        display: block;
-        height: 100%;
-        border-radius: 999px;
-        background: var(--pf-lv4);
-      }
-    }
   }
 
   /* ---------- rows ---------- */
