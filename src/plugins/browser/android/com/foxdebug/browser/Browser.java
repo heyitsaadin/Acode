@@ -272,9 +272,10 @@ public class Browser extends LinearLayout {
     menu.addItem(Ui.Icons.NO_CACHE, "Disable Cache", false);
     menu.addItem(Ui.Icons.TERMINAL, "Console", false);
     menu.addItem(Ui.Icons.CURSOR, "Cursor", false);
-    menu.addItem(Ui.Icons.TUNE, "Cursor Speed");
-    menu.setVisible("Cursor Speed", false);
-    menu.setLabel("Cursor Speed", cursorSpeedLabel());
+    menu.addItem(Ui.Icons.TUNE, "Cursor Settings");
+    menu.setVisible("Cursor Settings", false);
+    menu.addItem(Ui.Icons.DEVICES, "Preview Controls", true);
+    menu.setVisible("Preview Controls", false);
     menu.addItem(Ui.Icons.TUNE, "Set as Default");
     menu.addItem(Ui.Icons.REFRESH, "Clear Default");
     menu.setVisible("Set as Default", false);
