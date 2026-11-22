@@ -693,6 +693,20 @@ async function loadApp() {
 	};
 
 	acode.$headerToggler = $headerToggler;
+
+	// Plugin header buttons sit just left of the edit/run buttons. Those are
+	// re-inserted before the menu button on file switch, so they land after.
+	const placeHeaderButtons = () => {
+		const $anchor =
+			[$editMenuToggler, $runBtn].find(($el) => $el.isConnected) ||
+			$header.lastChild;
+		for (const $btn of acode.headerButtons) {
+			if ($btn.isConnected) continue;
+			$header.insertBefore($btn, $anchor);
+		}
+	};
+	acode.onHeaderButtonsChange = placeHeaderButtons;
+	placeHeaderButtons();
 	window.actionStack = actionStack.windowCopy();
 	window.editorManager = editorManager;
 	setMainMenu(settings.value.openFileListPos);
