@@ -93,78 +93,84 @@ function create($container, $toggler) {
 	}
 
 	loginEvents.addListener(updateSidebarAvatar);
+	activity.init();
 
-	async function handleUserIconClick(e) {
-		try {
+	let openingProfile = false;
+
+	async function handleUserIconClick() {
+		// A second tap while the profile is still opening would stack two pages.
+		if (openingProfile) return;
+		openingProfile = true;
+
+		// Cached users resolve instantly, so only show a loader if the
+		// account check is actually slow.
+		let loaderShown = false;
+		const loaderTimer = setTimeout(() => {
+			loaderShown = true;
 			loader.create(strings["login"], strings["loading..."]);
-			let user = await auth.getLoggedInUser();
+			loader.show();
+		}, 250);
 
-			if (!user) {
-				const confirmation = await confirm(
-					strings.confirm,
-					strings["confirm-login"],
-				);
+		const stopLoader = () => {
+			clearTimeout(loaderTimer);
+			if (loaderShown) {
+				loaderShown = false;
+				loader.destroy();
+			}
+		};
 
-				if (!confirmation) {
-					return;
-				}
-
-				loader.show();
-
-				await auth.login();
+		try {
+			let user = null;
+			try {
 				user = await auth.getLoggedInUser();
-				if (!user) {
-					return;
-				}
+			} catch (error) {
+				// offline or server error: still open the page as signed out
+				console.error("Error checking login status:", error);
 			}
+			stopLoader();
 
-			const menu = userContextMenu.el;
-			const isActive = menu.classList.toggle("active");
-
-			if (isActive) {
-				const menuName = userContextMenu.el.querySelector(".user-menu-name");
-				const menuEmail = userContextMenu.el.querySelector(".user-menu-email");
-
-				if (menuName) {
-					menuName.content = (
-						<div style={{ display: "flex" }}>
-							{user.name}
-							{Boolean(user.verified) && (
-								<span className="icon verified badge"></span>
-							)}
-							{Boolean(user.acode_pro) && <span className="badge">Pro</span>}
-						</div>
-					);
-				}
-
-				if (menuEmail) {
-					menuEmail.textContent = user.email || "";
-				}
-
-				setTimeout(() => {
-					document.addEventListener("click", handleClickOutside);
-				}, 10);
-			} else {
-				document.removeEventListener("click", handleClickOutside);
-			}
+			const { default: openProfile } = await import(
+				/* webpackChunkName: "profile" */ "pages/profile"
+			);
+			await openProfile({
+				user,
+				getAvatarSrc,
+				onLogin: handleLogin,
+				onLogout: handleLogout,
+			});
 		} catch (error) {
-			console.error("Error checking login status:", error);
+			console.error("Error opening profile:", error);
 		} finally {
-			loader.destroy();
+			stopLoader();
+			openingProfile = false;
 		}
 	}
 
-	function handleClickOutside(e) {
-		if (
-			!userContextMenu.el.contains(e.target) &&
-			e.target !== userAvatar.el &&
-			!userAvatar.el.contains(e.target)
-		) {
-			userContextMenu.el.classList.remove("active");
-			document.removeEventListener("click", handleClickOutside);
+	/**
+	 * Starts the Acode login flow. Used by the profile page.
+	 * @returns {Promise<object|null>} the logged in user, if any
+	 */
+	async function handleLogin() {
+		try {
+			await auth.login();
+			return (await auth.getLoggedInUser(true)) || null;
+		} catch (error) {
+			console.error("Error during login:", error);
+			return null;
 		}
 	}
 
+	async function getAvatarSrc(user) {
+		const avatarFile = await getUserAvatar(user).catch(() => null);
+		return avatarFile
+			? await helpers.toInternalUri(avatarFile)
+			: generateInitialsAvatar(user.name || user.email || "?");
+	}
+
+	/**
+	 * Logs the user out. Used by the profile page.
+	 * @returns {Promise<boolean>}
+	 */
 	async function handleLogout() {
 		loader.create(strings["logout"], strings["loading..."]);
 		loader.show();
@@ -172,8 +178,6 @@ function create($container, $toggler) {
 			const user = await auth.getLoggedInUser();
 			const success = await auth.logout();
 			if (success) {
-				userContextMenu.el.classList.remove("active");
-				document.removeEventListener("click", handleClickOutside);
 				updateSidebarAvatar();
 				toast("Logged out successfully");
 
@@ -183,11 +187,13 @@ function create($container, $toggler) {
 						await fsOperation(avatarFile).delete();
 					}
 				} catch {}
-			} else {
-				toast("Failed to logout");
+				return true;
 			}
+			toast("Failed to logout");
+			return false;
 		} catch (error) {
 			console.error("Error during logout:", error);
+			return false;
 		} finally {
 			loader.destroy();
 		}
