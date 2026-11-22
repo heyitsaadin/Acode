@@ -211,8 +211,10 @@
   }
 
   .pf-gh-scroll {
+    flex: 1;
+    min-width: 0;
     overflow-x: auto;
-    padding: 14px 14px 10px;
+    padding: 14px 14px 10px 6px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 
