@@ -8,10 +8,10 @@
 
   /* Activity graph: one blue, five steps (works on light and dark themes) */
   --pf-lv0: color-mix(in srgb, var(--primary-text-color) 9%, transparent);
-  --pf-lv1: color-mix(in srgb, var(--pf-blue) 28%, transparent);
-  --pf-lv2: color-mix(in srgb, var(--pf-blue) 50%, transparent);
-  --pf-lv3: color-mix(in srgb, var(--pf-blue) 75%, transparent);
-  --pf-lv4: var(--pf-blue);
+  --pf-lv1: color-mix(in srgb, var(--pf-accent) 28%, transparent);
+  --pf-lv2: color-mix(in srgb, var(--pf-accent) 50%, transparent);
+  --pf-lv3: color-mix(in srgb, var(--pf-accent) 75%, transparent);
+  --pf-lv4: var(--pf-accent);
 
   box-sizing: border-box;
   width: 100%;
