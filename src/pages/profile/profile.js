@@ -753,6 +753,9 @@ export default function ProfileInclude({
 	renderLanguages(renderActivity().languages);
 	fillPlugins();
 
+	// Index per section drives the staggered entrance (see profile.scss).
+	[...$main.children].forEach(($el, i) => $el.style.setProperty("--pf-i", i));
+
 	$page.body = $main;
 
 	actionStack.push({
