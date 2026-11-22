@@ -445,7 +445,10 @@
     color: var(--primary-text-color);
 
     &:last-child { border-bottom: none; }
-    &:active { background: var(--pf-lv0); }
+    &:active {
+      background: var(--pf-lv0);
+      transform: scale(0.98);
+    }
 
     > .pf-icon { color: var(--pf-muted); }
 
