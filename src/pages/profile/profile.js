@@ -510,7 +510,7 @@ export default function ProfileInclude({
 				{metric(`${data.longest}d`, t("best streak", "Best streak"))}
 				{metric(String(totals.activeDays), t("active days", "Active days"))}
 			</div>,
-			$scroll,
+			$heat,
 			<div className="pf-gh-foot">
 				<span>{todayText}</span>
 				{$legend}
