@@ -446,6 +446,8 @@ export default function ProfileInclude({
 	}
 
 	function refreshAccount() {
+		// After the first render, sign in/out also swaps the sample heatmap.
+		if (activity.$body.firstChild) renderActivity();
 		renderHero();
 		renderFoot();
 	}
