@@ -117,9 +117,39 @@ public class Emulator extends LinearLayout {
     addControl("width", 50, "Width");
     addControl("height", 50, "Height");
     addControl("scale", 50, "Scale");
+    // Thin tappable handle on top of the panel that hides the whole panel.
+    TextView handle = new TextView(context);
+    handle.setText("\u25BC  Hide controls");
+    handle.setGravity(Gravity.CENTER);
+    handle.setTextSize(12);
+    handle.setTextColor(theme.get("primaryTextColor"));
+    handle.setBackgroundColor(theme.get("primaryColor"));
+    handle.setClickable(true);
+    handle.setLayoutParams(
+      new LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        Ui.dpToPixels(context, 28)
+      )
+    );
+    handle.setOnClickListener(
+      new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          if (hideListener != null) {
+            hideListener.run();
+          }
+        }
+      }
+    );
+
+    addView(handle);
     addView(border);
     addView(main);
     setOrientation(LinearLayout.VERTICAL);
+  }
+
+  public void setHideListener(Runnable listener) {
+    this.hideListener = listener;
   }
 
   public void setChangeListener(Callback listener) {
