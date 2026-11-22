@@ -49,6 +49,14 @@ import android.webkit.WebView;
 import android.widget.Toast;
 import android.os.Handler;
 import android.os.Looper;
+import android.app.Dialog;
+import android.graphics.drawable.ColorDrawable;
+import android.view.MotionEvent;
+import android.view.ViewConfiguration;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.SeekBar;
 
 
 
