@@ -256,6 +256,8 @@
     &.lv3 { background: var(--pf-lv3); }
     &.lv4 { background: var(--pf-lv4); }
     &.none { background: transparent; }
+    &.today { box-shadow: 0 0 0 1.5px var(--pf-muted); }
+    &.selected { box-shadow: 0 0 0 1.5px var(--primary-text-color); }
   }
 
   .pf-gh-foot {
