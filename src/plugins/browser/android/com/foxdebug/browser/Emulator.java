@@ -118,13 +118,38 @@ public class Emulator extends LinearLayout {
     addControl("height", 50, "Height");
     addControl("scale", 50, "Scale");
     // Thin tappable handle on top of the panel that hides the whole panel.
-    TextView handle = new TextView(context);
-    handle.setText("\u25BC  Hide controls");
-    handle.setGravity(Gravity.CENTER);
-    handle.setTextSize(12);
-    handle.setTextColor(theme.get("primaryTextColor"));
+    LinearLayout handle = new LinearLayout(context);
+    handle.setOrientation(LinearLayout.HORIZONTAL);
+    handle.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+    handle.setPadding(
+      Ui.dpToPixels(context, 12),
+      0,
+      Ui.dpToPixels(context, 12),
+      0
+    );
     handle.setBackgroundColor(theme.get("primaryColor"));
     handle.setClickable(true);
+
+    ImageView hideIcon = new ImageView(context);
+    hideIcon.setImageBitmap(
+      Ui.Icons.get(context, Ui.Icons.VISIBILITY_OFF, theme.get("primaryTextColor"))
+    );
+    hideIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+    hideIcon.setLayoutParams(
+      new LinearLayout.LayoutParams(
+        Ui.dpToPixels(context, 18),
+        Ui.dpToPixels(context, 18)
+      )
+    );
+
+    TextView hideLabel = new TextView(context);
+    hideLabel.setText("Hide controls");
+    hideLabel.setTextSize(12);
+    hideLabel.setTextColor(theme.get("primaryTextColor"));
+    hideLabel.setPadding(Ui.dpToPixels(context, 8), 0, 0, 0);
+
+    handle.addView(hideIcon);
+    handle.addView(hideLabel);
     handle.setLayoutParams(
       new LinearLayout.LayoutParams(
         LinearLayout.LayoutParams.MATCH_PARENT,
