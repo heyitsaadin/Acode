@@ -1234,7 +1234,7 @@ class CursorScript {
       "function onTM(e){if(gesture||e.touches.length>1){gesture=true;return;}",
       "var t=e.touches[0];if(!t)return;",
       "if(!moved&&Math.abs(t.clientX-sx)+Math.abs(t.clientY-sy)>10){moved=true;lx=sx;ly=sy;}",
-      "if(moved){nudge((t.clientX-lx)*SPEED,(t.clientY-ly)*SPEED);hover(true);}",
+      "if(moved){nudge((t.clientX-lx)*cfg.speed,(t.clientY-ly)*cfg.speed);hover(true);}",
       "lx=t.clientX;ly=t.clientY;}",
       "function onTE(e){if(e.touches.length>0)return;",
       "if(active&&!moved&&!gesture&&Date.now()-t0<300)clickAtCursor();",
