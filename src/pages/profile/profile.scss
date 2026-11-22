@@ -1,5 +1,7 @@
 #profile-page {
   --pf-blue: #3b82f6;
+  /* Follows the active theme; the button keeps a fixed blue for contrast. */
+  --pf-accent: var(--active-color, var(--pf-blue));
   --pf-muted: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
   --pf-border: var(--border-color, rgba(255, 255, 255, 0.1));
   --pf-danger: var(--danger-color, #ff5c5c);
