@@ -961,6 +961,7 @@ class Acode {
 			<span
 				className={`icon ${icon || "extension"}`}
 				data-header-button={id}
+				data-action="plugin-header-button"
 				aria-label={label || id}
 				style={{ fontSize: "1.2em" }}
 				onclick={onclick}
