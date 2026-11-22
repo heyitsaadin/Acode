@@ -15,6 +15,7 @@ import helpers from "utils/helpers";
 import Uri from "utils/Uri";
 import Url from "utils/Url";
 import { buildWeeks, monthLabels } from "./heatmap";
+import renderShareCard from "./shareCard";
 
 /* Feather-style stroke icons, so the page never depends on the icon font. */
 const ICONS = {
