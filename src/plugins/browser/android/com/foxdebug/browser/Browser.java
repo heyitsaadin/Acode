@@ -1102,9 +1102,15 @@ public class Browser extends LinearLayout {
  */
 class CursorScript {
 
-  static String build(boolean on, float speed) {
+  static String build(
+    boolean on,
+    float speed,
+    float size,
+    float screenW,
+    float basePx
+  ) {
     String[] js = {
-      "(function(on,SPEED){",
+      "(function(on,SPEED,SIZE,SW,BASE){",
       "if(window.__acodeCursorCleanup){window.__acodeCursorCleanup();window.__acodeCursorCleanup=null;}",
       "if(!on)return;",
       "var root=document.documentElement;if(!root)return;",
