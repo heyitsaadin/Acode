@@ -83,9 +83,26 @@ public class Browser extends LinearLayout {
   // time the browser is launched.
   public boolean cursor = false;
   // How far the cursor moves per unit of finger movement (trackpad speed).
-  // Tap "Cursor Speed" in the menu to cycle through CURSOR_SPEEDS.
+  // Adjusted with the "Cursor Settings" slider (continuous), saved in prefs.
   public float cursorSpeed = 1.5f;
-  private static final float[] CURSOR_SPEEDS = { 0.5f, 1f, 1.5f, 2f, 3f, 4f };
+  // Cursor size multiplier (1 = default size). Also set in "Cursor Settings".
+  public float cursorSize = 1f;
+  // Cursor size at 1x, in dp, independent of preview zoom / device preset.
+  private static final float CURSOR_BASE_DP = 12f;
+  private static final float SPEED_MIN = 0.2f;
+  private static final float SPEED_MAX = 6f;
+  private static final float SIZE_MIN = 0.4f;
+  private static final float SIZE_MAX = 2.5f;
+  private static final int SEEK_STEPS = 200;
+
+  private Dialog cursorDialog;
+  // Native trackpad state, used for the area around/under the preview.
+  private float padX;
+  private float padY;
+  private float padDownX;
+  private float padDownY;
+  private long padDownTime;
+  private boolean padMoved;
 
   private String url = "";
   private String title = "Browser";
