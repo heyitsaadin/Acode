@@ -442,6 +442,10 @@ class Acode {
 		this.define("themeBuilder", ThemeBuilder);
 		this.define("selectionMenu", selectionMenu);
 		this.define("sidebarApps", sidebarAppsModule);
+		this.define("headerButtons", {
+			add: (options) => this.addHeaderButton(options),
+			remove: (id) => this.removeHeaderButton(id),
+		});
 		this.define("terminal", terminalModule);
 		this.define("webview", webview);
 		this.define("orientation", orientation);
