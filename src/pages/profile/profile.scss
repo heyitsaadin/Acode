@@ -121,6 +121,14 @@
     }
 
     &.guest { color: var(--pf-muted); }
+
+    /* Pro: subtle gold ring */
+    &.pro {
+      border-color: transparent;
+      box-shadow:
+        0 0 0 2px #ffc94d,
+        0 0 14px rgba(255, 201, 77, 0.3);
+    }
   }
 
   .pf-name-row {
