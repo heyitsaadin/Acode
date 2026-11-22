@@ -310,6 +310,7 @@ public class Browser extends LinearLayout {
               } else {
                 menu.setVisible("Console", true);
                 removeView(deviceEmulator);
+                menu.setVisible("Preview Controls", false);
                 fitWebViewTo(0, 0, 1);
                 webView
                   .getViewTreeObserver()
