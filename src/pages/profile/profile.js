@@ -500,6 +500,7 @@ export default function ProfileInclude({
 		// Signed out with nothing tracked yet: show a faded sample instead of
 		// a blank grid.
 		const isPlaceholder = !user && !data.totals.activeDays;
+		$share.style.display = data.totals.activeDays ? "" : "none";
 		const weeks = buildWeeks(
 			isPlaceholder ? samplePattern(data.year) : data.year,
 		);
