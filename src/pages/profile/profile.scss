@@ -260,6 +260,30 @@
     &.selected { box-shadow: 0 0 0 1.5px var(--primary-text-color); }
   }
 
+  .pf-gh-wrap {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  /* Rows line up with the grid: spacer = month label row, then 7 days. */
+  .pf-gh-days {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 14px 0 10px 14px;
+
+    .pf-gh-spacer { height: 14px; }
+
+    .pf-gh-daylabel {
+      height: 11px;
+      line-height: 11px;
+      font-size: 9.5px;
+      white-space: nowrap;
+      color: var(--pf-muted);
+    }
+  }
+
   .pf-gh-foot {
     display: flex;
     flex-wrap: wrap;
