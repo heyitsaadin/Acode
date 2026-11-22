@@ -56,6 +56,10 @@ public class Ui {
         return drawCursor(color);
       }
 
+      if (VISIBILITY_OFF.equals(code)) {
+        return drawEyeOff(color);
+      }
+
       if (paint == null) {
         paint = new Paint();
         paint.setAntiAlias(true);
