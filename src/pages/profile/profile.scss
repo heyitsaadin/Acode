@@ -1,3 +1,14 @@
+@keyframes pf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 #profile-page {
   --pf-blue: #3b82f6;
   /* Follows the active theme; the button keeps a fixed blue for contrast. */
