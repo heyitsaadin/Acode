@@ -42,6 +42,24 @@
     flex-shrink: 0;
   }
 
+  /* Sections fade up one after another (--pf-i is set in profile.js). */
+  > .pf-slot,
+  > .pf-section {
+    animation: pf-rise 0.4s ease-out both;
+    animation-delay: calc(var(--pf-i, 0) * 60ms);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    > .pf-slot,
+    > .pf-section { animation: none; }
+  }
+
+  /* Faded sample graph for signed-out users with no activity yet. */
+  .pf-gh-wrap.placeholder {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
   .pf-slot {
     display: flex;
     flex-direction: column;
