@@ -496,6 +496,15 @@ public class Browser extends LinearLayout {
     Browser browser = this;
     deviceEmulator = new Emulator(context, theme);
     deviceEmulator.setReference(webView);
+    deviceEmulator.setHideListener(
+      new Runnable() {
+        @Override
+        public void run() {
+          setControlsVisible(false);
+          menu.setChecked("Preview Controls", false);
+        }
+      }
+    );
     deviceEmulator.setChangeListener(
       new Emulator.Callback() {
         @Override
