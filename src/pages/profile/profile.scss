@@ -217,6 +217,28 @@
     color: var(--pf-muted);
   }
 
+  .pf-share {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin: -6px -6px -6px 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--pf-muted);
+    transition:
+      transform 0.12s ease,
+      background 0.12s ease;
+
+    &:active {
+      background: var(--pf-lv0);
+      transform: scale(0.9);
+    }
+  }
+
   .pf-card {
     display: flex;
     flex-direction: column;
